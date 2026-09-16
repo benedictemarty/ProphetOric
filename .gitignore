@@ -1,0 +1,12 @@
+build/
+tests/out/
+tests/host/test_*
+!tests/host/test_*.c
+*.o
+__pycache__/
+.env
+.env.*
+*.pem
+*.key
+memory.dump
+*.dump

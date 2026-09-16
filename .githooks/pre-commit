@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Hook pre-commit — refuse tout commit contenant un secret, une clé ou un fichier trop gros.
+# Contournement volontaire et tracé : SKIP_SECSCAN=1 git commit ...
+set -u
+cd "$(git rev-parse --show-toplevel)" || exit 1
+if [ "${SKIP_SECSCAN:-0}" = "1" ]; then
+  echo "pre-commit: secscan ignoré (SKIP_SECSCAN=1)" >&2
+  exit 0
+fi
+# Identité imposée par le projet
+name=$(git config user.name); mail=$(git config user.email)
+if [ "$name" != "bmarty" ] || [ "$mail" != "bmarty@mailo.com" ]; then
+  echo "pre-commit: identité git incorrecte ($name <$mail>), attendu bmarty <bmarty@mailo.com>" >&2
+  exit 1
+fi
+exec tools/secscan.sh --staged

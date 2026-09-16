@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Hook commit-msg — un seul auteur (bmarty) : tout trailer Co-Authored-By est refusé.
+if grep -Eiq '^Co-Authored-By:' "$1"; then
+  echo "commit-msg: trailer Co-Authored-By interdit (auteur unique : bmarty)" >&2
+  exit 1
+fi
+exit 0
