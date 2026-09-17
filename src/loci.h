@@ -23,6 +23,11 @@ int  loci_write(unsigned char fd, const unsigned char *buf, unsigned char n); /*
 int  loci_close(unsigned char fd);
 int  loci_mkdir(const char *path);
 unsigned int loci_errno(void);
+/* répertoires : OPENDIR("") = liste des périphériques (« 0: Internal storage », « 1: MSC … »),
+ * sinon le dossier ; READDIR remplit name (≤ 63 car., "" = fin) et is_dir */
+int  loci_opendir(const char *path);
+int  loci_readdir(unsigned char fd, char *name, unsigned char *is_dir);
+int  loci_closedir(unsigned char fd);
 #define LOCI_MNT_TAP 4                                              /* lecteur cassette (0-3 = disquettes) */
 int  loci_mount(unsigned char drive, const char *path);           /* monte un .tap (4) ou un .dsk (0-3) */
 #define LOCI_BOOT_FDC 0x01                                          /* ROM Microdisc en $A000 (boot disquette) */

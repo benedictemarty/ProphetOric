@@ -16,7 +16,7 @@
 #include "config.h"
 #include "loci.h"
 
-#define VERSION "0.4.0"
+#define VERSION "0.6.0"
 #define IPP 16                       /* programmes par page (16 lignes de liste) */
 #define ROWS 28
 #define COLS 40
@@ -111,20 +111,130 @@ static unsigned char edit_field(unsigned char y, char *buf, unsigned char max)
     }
 }
 
+/* choix à deux valeurs affiché sur la ligne y : espace/j/k bascule, entrée valide, échap annule */
+static unsigned char choose2(unsigned char y, const char *a, const char *b, unsigned char *sel)
+{
+    unsigned char c;
+    for (;;) {
+        char l[COLS + 1];
+        strcpy(l, *sel ? "  " : "> "); strcat(l, a); strcat(l, *sel ? "    > " : "      "); strcat(l, b);
+        line(y, l);
+        c = key();
+        if (c == '\n') return 1;
+        if (c == CH_ESC) return 0;
+        if (c == ' ' || c == 'j' || c == 'k' || c == 'n' || c == 'b') *sel = !*sel;
+    }
+}
+
+/* Explorateur de dossiers du LOCI : niveau « volumes » (0: flash, 1:-4: clés USB) s'il y en a
+ * plusieurs, puis les sous-dossiers ; j/k choisir, entrée = entrer, b = dossier parent,
+ * espace = choisir le dossier courant, échap = annuler. Résultat : "" (racine du flash),
+ * "jeux", "1:" (racine du volume 1) ou "1:jeux/oric". */
+#define DIR_MAX 20
+static char dir_names[DIR_MAX][26];
+static unsigned char dir_count;
+
+static void dir_list(const char *path, unsigned char volumes)
+{
+    int fd; char name[64]; unsigned char is_dir, i, j;
+    dir_count = 0;
+    fd = loci_opendir(volumes ? "" : (path[0] ? path : "0:"));
+    if (fd < 0) return;
+    while (dir_count < DIR_MAX && loci_readdir((unsigned char)fd, name, &is_dir) == 0 && name[0]) {
+        if (volumes) {                         /* « N: libellé » ; le modem CDC n'est pas un volume */
+            if (name[1] != ':' || strstr(name, "CDC")) continue;
+            strncpy(dir_names[dir_count], name, 25); dir_names[dir_count][25] = 0;
+        } else {
+            if (!is_dir) continue;
+            strncpy(dir_names[dir_count], name, 25); dir_names[dir_count][25] = 0;
+        }
+        ++dir_count;
+    }
+    loci_closedir((unsigned char)fd);
+    if (!volumes) {                            /* tri simple (insertion) */
+        char tmp[26];
+        for (i = 1; i < dir_count; ++i) for (j = i; j && strcmp(dir_names[j - 1], dir_names[j]) > 0; --j) {
+            strcpy(tmp, dir_names[j]); strcpy(dir_names[j], dir_names[j - 1]); strcpy(dir_names[j - 1], tmp);
+        }
+    }
+}
+
+static unsigned char browse_dir(char *out, unsigned char max)
+{
+    char cur[40];                               /* "N:a/b" ou "a/b" (flash) */
+    unsigned char sel = 0, at_volumes, nvol, c, i;
+    dir_list("", 1); nvol = dir_count;
+    at_volumes = nvol > 1;
+    strcpy(cur, out);
+    if (!at_volumes) { if (cur[1] == ':') memmove(cur, cur + 2, strlen(cur + 2) + 1); }   /* un seul volume : pas de préfixe */
+    if (!at_volumes) dir_list(cur, 0);
+    for (;;) {
+        char l[COLS + 1];
+        title("dossier");
+        strcpy(l, at_volumes ? "volumes du LOCI :" : "dossier : /"); if (!at_volumes) strncat(l, cur, COLS - 12);
+        line(2, l);
+        for (i = 0; i < dir_count && i < DIR_MAX; ++i) { l[0] = i == sel ? '>' : ' '; l[1] = ' '; strcpy(l + 2, dir_names[i]); line(4 + i, l); }
+        if (!dir_count) line(4, at_volumes ? "  (aucun volume)" : "  (aucun sous-dossier)");
+        status(at_volumes ? "entree=ouvrir  esc=annuler" : "entree b=parent espace=choisir n=nouveau esc");
+        c = key();
+        if (c == CH_ESC) return 0;
+        if (c == 'j' && sel + 1 < dir_count) ++sel;
+        if (c == 'k' && sel) --sel;
+        if (at_volumes) {
+            if (c == '\n' && dir_count) { cur[0] = dir_names[sel][0]; cur[1] = ':'; cur[2] = 0; at_volumes = 0; sel = 0; dir_list(cur, 0); }
+            continue;
+        }
+        if (c == ' ') { if (strlen(cur) >= max) return 0; strcpy(out, cur); return 1; }
+        if (c == '\n' && dir_count) {
+            if (strlen(cur) + strlen(dir_names[sel]) + 2 >= sizeof cur) continue;
+            if (cur[0] && cur[strlen(cur) - 1] != ':') strcat(cur, "/");
+            strcat(cur, dir_names[sel]); sel = 0; dir_list(cur, 0);
+        }
+        if (c == 'n') {                                        /* nouveau dossier dans le dossier courant */
+            char nm[26], path[40]; nm[0] = 0;
+            line(ROWS - 3, "nom du nouveau dossier :");
+            if (edit_field(ROWS - 2, nm, 24) && nm[0] && strlen(cur) + strlen(nm) + 2 < sizeof path) {
+                strcpy(path, cur); if (cur[0] && cur[strlen(cur) - 1] != ':') strcat(path, "/"); strcat(path, nm);
+                if (loci_mkdir(cur[0] ? path : nm) >= 0) { sel = 0; dir_list(cur, 0); for (i = 0; i < dir_count; ++i) if (!strcmp(dir_names[i], nm)) sel = i; }
+            }
+        }
+        if (c == 'b') {
+            char *sl = strrchr(cur, '/');
+            if (sl) *sl = 0;
+            else if (cur[1] == ':' && cur[2]) cur[2] = 0;
+            else if (cur[0] && cur[1] != ':') cur[0] = 0;
+            else if (nvol > 1) { at_volumes = 1; sel = 0; dir_list("", 1); continue; }
+            sel = 0; dir_list(cur, 0);
+        }
+    }
+}
+
+static void config_draw(const char *host, const char *port, const char *dir, const char *pass, unsigned char tls)
+{
+    title("configuration");
+    line(2, "serveur (hote ou IP) :");            line(3, host);
+    line(5, "connexion :");                        line(6, tls ? "  HTTP 8998    > TLS 443 (modem)" : "> HTTP 8998      TLS 443 (modem)");
+    line(8, "port :");                             line(9, port);
+    line(11, "dossier LOCI (entree = explorer) :"); line(12, dir[0] ? dir : "(racine du flash)");
+    line(14, "mot de passe zones reservees :");    line(15, pass[0] ? "********" : "(aucun)");
+    status("entree = champ suivant   echap = annuler");
+}
+
 static void config_screen(void)
 {
     char host[40], port[6], dir[32], pass[32];
+    unsigned char tls;
     strcpy(host, http_host); strcpy(port, http_port); strcpy(dir, dl_dir); strcpy(pass, http_pass);
-    title("configuration");
-    line(2, "serveur (hote ou IP) :");
-    line(5, "port (8998 = HTTP, 443 = TLS modem) :");
-    line(8, "dossier LOCI (vide = courant, 1:JEUX) :");
-    line(11, "mot de passe zones reservees (vide) :");
-    status("entree = champ suivant   echap = annuler");
+    tls = strcmp(port, "443") == 0;
+    config_draw(host, port, dir, pass, tls);
     if (!edit_field(3, host, 38) || !host[0]) goto out;
-    if (!edit_field(6, port, 5) || !port[0]) goto out;
-    if (!edit_field(9, dir, 30)) goto out;
-    if (!edit_field(12, pass, 30)) goto out;
+    if (!choose2(6, "HTTP 8998", "TLS 443 (modem)", &tls)) goto out;
+    if (tls) strcpy(port, "443"); else if (!strcmp(port, "443") || !port[0]) strcpy(port, "8998");   /* port perso conservé */
+    line(9, port);
+    if (!edit_field(9, port, 5) || !port[0]) goto out;
+    if (!browse_dir(dir, 30)) goto out;
+    config_draw(host, port, dir, pass, tls);
+    if (!edit_field(15, pass, 30)) goto out;
     strcpy(http_host, host); strcpy(http_port, port); strcpy(dl_dir, dir); strcpy(http_pass, pass);
     status(config_save() ? "enregistre dans PROPHET.CFG - b retour" : "applique (PROPHET.CFG non ecrit) - b retour");
     while (key() != 'b') ;
@@ -140,12 +250,17 @@ out:
 static void spinner(unsigned long received)
 {
     static unsigned char phase;
+    static unsigned int kb;                       /* Ko affichés : compteur 16 bits, pas de division 32 bits
+                                                     (≈ 10 000 cycles en cc65 : l'anneau de 32 octets débordait) */
     static const char wheel[4] = { '-', '\\', '|', '/' };
     *(char *)(0xBB80 + (ROWS - 1) * COLS + COLS - 1) = wheel[phase++ & 3];
-    if ((received & 1023) == 0 || phase == 1) {
-        unsigned long kb = (dl_base + received) >> 10; char d[8]; unsigned char m = 0;
+    if (received == 128) kb = (unsigned int)(dl_base >> 10);            /* début de tranche */
+    if (((unsigned int)received & 1023) == 0 || received == 128) {
+        unsigned int v; char d[8]; unsigned char m = 0;
         char *scr = (char *)(0xBB80 + (ROWS - 1) * COLS + COLS - 8);
-        do { d[m++] = '0' + (unsigned char)(kb % 10); kb /= 10; } while (kb && m < 5);
+        if (((unsigned int)received & 1023) == 0) ++kb;
+        v = kb;
+        do { d[m++] = '0' + (unsigned char)(v % 10); v /= 10; } while (v && m < 5);
         while (m < 5) d[m++] = ' ';
         while (m) *scr++ = d[--m];
         *scr++ = ' '; *scr++ = 'K';

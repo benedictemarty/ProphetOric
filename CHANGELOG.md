@@ -1,5 +1,26 @@
 # Changelog — ProphetOric
 
+## [0.6.0] — 2026-09-17 — Configuration : type de connexion, explorateur de dossiers
+### Ajouté (demande PO)
+- Écran de configuration refait : hôte ; **type de connexion** (« HTTP 8998 » /
+  « TLS 443 (modem) », bascule espace/j/k — un port personnalisé est
+  conservé) ; port ; **explorateur** du stockage du LOCI pour le dossier
+  cible : niveau **volumes** (« 0: Internal storage », clés USB « N: MSC … »,
+  le modem CDC exclu) quand il y en a plusieurs, puis les sous-dossiers
+  (`OPENDIR`/`READDIR`/`CLOSEDIR`, tri alphabétique), `entrée` entrer,
+  `b` parent, `espace` choisir, **`n` nouveau dossier** (`MKDIR`), `échap` ;
+  mot de passe. Résultat enregistré tel quel (`jeux`, `2:`, `2:jeux/oric`) ;
+  téléchargement et `mkdir` respectent le préfixe de volume.
+- `loci.c` : `loci_opendir/readdir/closedir` (dirent de 72 octets : fd, nom
+  64, attributs, taille).
+- Tests : `config` (explorateur : `n` jeux, entrer, espace) et **`volumes`**
+  (clé USB émulée `--loci-usb` : volume choisi, fichier écrit sur la clé,
+  `PROPHET.CFG` sur le flash avec `N:jeux`).
+### Corrigé
+- Le compteur Ko de l'indicateur faisait une division 32 bits par Ko (≈ 10 000
+  cycles en cc65) : l'anneau de 32 octets débordait à 9600 bauds (fichier
+  corrompu à l'octet 4131, test `baud_ring32`). Compteur 16 bits par tranche.
+
 ## [0.5.1] — 2026-09-17 — Indicateur de téléchargement
 ### Ajouté
 - Pendant un téléchargement : roue `-\|/` en bas à droite (un caractère écrit

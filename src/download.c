@@ -36,7 +36,7 @@ unsigned char download_package(const char *id, dl_progress progress)
     if (!http_get(path, 0, list, sizeof list, &len)) { dl_error = http_error; return 0; }
     if (http_status != 200) { dl_error = "fichiers introuvables"; return 0; }
     if (!cli_parse_files(list, files, CLI_MAX_FILES, &nf) || nf == 0) { dl_error = "liste de fichiers invalide"; return 0; }
-    if (dl_dir[0]) loci_mkdir(dl_dir);            /* existe déjà : erreur ignorée */
+    if (dl_dir[0] && dl_dir[strlen(dl_dir) - 1] != ':') loci_mkdir(dl_dir);   /* existe déjà : erreur ignorée */
     dl_last_tap[0] = 0; dl_last_dsk[0] = 0; dl_skipped = 0;
     for (i = 0; i < nf; ++i) {
         unsigned long got;
@@ -45,7 +45,7 @@ unsigned char download_package(const char *id, dl_progress progress)
         if (ln > 30) { dl_error = "nom de fichier trop long"; return done; }
         if (ln > 4 && (!strcmp(files[i].name + ln - 4, ".zip") || !strcmp(files[i].name + ln - 4, ".ZIP"))) { ++dl_skipped; continue; }
         dst[0] = 0;
-        if (dl_dir[0]) { strcpy(dst, dl_dir); strcat(dst, "/"); }
+        if (dl_dir[0]) { strcpy(dst, dl_dir); if (dst[strlen(dst) - 1] != ':') strcat(dst, "/"); }   /* "1:" = racine du volume 1 */
         strcat(dst, files[i].name);
         strcpy(path, "/files/"); strcat(path, id); strcat(path, "/"); num(path + strlen(path), i);
         if (progress) progress(files[i].name, 0);

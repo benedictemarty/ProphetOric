@@ -16,6 +16,9 @@ typedef int (*stub_fn)(void);
 #define OP_CLOSE 0x15
 #define OP_READ_XSTACK 0x16
 #define OP_WRITE_XSTACK 0x18
+#define OP_OPENDIR 0x80
+#define OP_CLOSEDIR 0x81
+#define OP_READDIR 0x82
 #define OP_MKDIR 0x83
 #define OP_MOUNT 0x90
 #define OP_MIA_BOOT 0xA0
@@ -87,4 +90,32 @@ int loci_boot(unsigned char settings)
 {
     REG(AREG) = settings; REG(XREG) = 0;
     return CALL(OP_MIA_BOOT);
+}
+
+int loci_opendir(const char *path)
+{
+    if (path && *path) push_zstring(path);        /* pile vide = liste des périphériques */
+    REG(AREG) = 0; REG(XREG) = 0;
+    return CALL(OP_OPENDIR);
+}
+
+int loci_closedir(unsigned char fd)
+{
+    REG(AREG) = fd; REG(XREG) = 0;
+    return CALL(OP_CLOSEDIR);
+}
+
+/* dirent de 72 octets sur la xstack : fd(2) nom[64] attrib(1) 0 taille(4) */
+int loci_readdir(unsigned char fd, char *name, unsigned char *is_dir)
+{
+    int r; unsigned char i, b;
+    REG(AREG) = fd; REG(XREG) = 0;
+    r = CALL(OP_READDIR);
+    if (r < 0) return r;
+    b = REG(XSTACK); b = REG(XSTACK);             /* fd */
+    for (i = 0; i < 64; ++i) { b = REG(XSTACK); if (i < 63) name[i] = (char)b; }
+    name[63] = 0;
+    b = REG(XSTACK); *is_dir = (b & 0x10) != 0;   /* AM_DIR */
+    b = REG(XSTACK); b = REG(XSTACK); b = REG(XSTACK); b = REG(XSTACK); b = REG(XSTACK);
+    return 0;
 }

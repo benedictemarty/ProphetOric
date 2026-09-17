@@ -1,4 +1,4 @@
-ProphetOric 0.4.0                ? zorg
+ProphetOric 0.6.0                ? zorg
 
 > Zorg
 
