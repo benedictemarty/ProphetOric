@@ -15,7 +15,7 @@ du firmware LOCI ; via le modem PicoWiFi émulé de Phosphoric (vraies sockets).
 
 ```
 make            # build/prophet.tap (prophet.3617.fr:8998)
-make run        # Phosphoric SDL + LOCI + modem PicoWiFi émulé → prophet.3617.fr
+make run        # Phosphoric SDL + LOCI (flash = ./flash/, avec microdis.rom) + modem PicoWiFi émulé → prophet.3617.fr
 make test       # tests hôte (cli, http sur faux modem) + 9 scénarios Phosphoric headless → prophetd local (ONLY=nom ; LONG=1 : disquette 1 Mo, 18 min)
 ```
 Touches : j/k (flèches) choisir, entrée ouvrir, b retour, n/p page, s chercher, g télécharger (fiche), l lancer (cassette montée + CLOAD"" / disquette + MIA_BOOT), c configuration, q quitter.
