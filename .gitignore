@@ -12,3 +12,4 @@ memory.dump
 *.dump
 tests/repo/oric-utils/
 flash/
+docs/img/*.avi

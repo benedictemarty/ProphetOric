@@ -1,5 +1,7 @@
 # ProphetOric — client Prophet pour Oric (LOCI + modem Wi‑Fi)
 
+![catégories](docs/img/01-categories.png) ![fiche](docs/img/03-fiche.png)
+
 Client du dépôt de programmes **Prophet** (`prophet.3617.fr`, serveur
 [Neo6502Prophet](../Neo6502Prophet)) pour **Oric 1 / Atmos** équipé du
 **LOCI** (cartouche RP2040 de sodiumlb) et du modem **PicoWiFiModemUSB** :
@@ -28,4 +30,9 @@ Touches : j/k (flèches) choisir, entrée ouvrir, b retour, n/p page, s chercher
 | Chaîne | cc65 (`-t atmos`, comme OricTel) ; tests hôte gcc + Phosphoric headless |
 | Réutilisé | OricTel (`~/orictel`) : driver ACIA `serial_asm.s`, file d'émission, `at_modem.c` |
 
-Voir `docs/CADRAGE.md` (architecture, risques, plan de tests) et `ROADMAP.md`.
+Voir **`docs/MANUEL.md`** (manuel utilisateur, captures, vidéo `docs/img/demo.mp4`),
+`docs/CADRAGE.md` (architecture, risques, plan de tests), `ROADMAP.md`,
+`CONTRIBUTING.md`. Licence : EUPL‑1.2 (`LICENSE`). Auteur : bmarty.
+
+Dépôts : https://framagit.org/benedictemarty/prophetoric ·
+https://github.com/benedictemarty/ProphetOric

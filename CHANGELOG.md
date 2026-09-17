@@ -1,5 +1,15 @@
 # Changelog — ProphetOric
 
+## [0.6.1] — 2026-09-17 — Documentation et publication
+### Ajouté
+- `docs/MANUEL.md` (manuel utilisateur : matériel, installation, touches,
+  catalogue, téléchargement, lancement cassette/disquette, configuration,
+  émulation, dépannage), captures d'écran `docs/img/*.png` (prises sur
+  Phosphoric contre le serveur réel) et vidéo `docs/img/demo.mp4`
+  (catalogue → fiche → téléchargement → `CLOAD""`).
+- `CONTRIBUTING.md` (règles du projet), `LICENSE` (EUPL‑1.2), publication sur
+  Framagit et GitHub.
+
 ## [0.6.0] — 2026-09-17 — Configuration : type de connexion, explorateur de dossiers
 ### Validé
 - PO, `make run` contre prophet.3617.fr (Phosphoric SDL) : « fonctionne ».

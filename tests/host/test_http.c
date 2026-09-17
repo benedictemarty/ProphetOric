@@ -13,7 +13,7 @@ int main(void)
     CHECK(http_parse_headers("HTTP/1.1 200 OK\r\ncontent-length: 42\r\nX: y\r\n\r\n") && http_status == 200 && http_length == 42);
     CHECK(http_parse_headers("HTTP/1.0 404 Not Found\r\n\r\n") && http_status == 404 && http_length == 0xFFFFFFFFUL);
     CHECK(!http_parse_headers("42,1,0:") && http_status == 0);
-    CHECK(http_parse_headers("HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-7/100\r\nContent-Length: 8\r\n\r\n") && http_status == 206 && http_length == 8);
+    CHECK(http_parse_headers("HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-7/100\r\nContent-Length: 8\r\n\r\n") && http_status == 206 && http_length == 8 && http_range_total == 100);
 
     strcpy(http_host, "127.0.0.1"); strcpy(http_port, "18994"); http_pass[0] = 0;
     fake_reset("HTTP/1.1 200 OK\r\nContent-Length: 22\r\nConnection: close\r\n\r\ngames (3)\n\rtools (1)\n\r");
