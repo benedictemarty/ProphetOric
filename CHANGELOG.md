@@ -1,6 +1,8 @@
 # Changelog — ProphetOric
 
 ## [0.6.0] — 2026-09-17 — Configuration : type de connexion, explorateur de dossiers
+### Validé
+- PO, `make run` contre prophet.3617.fr (Phosphoric SDL) : « fonctionne ».
 ### Ajouté (demande PO)
 - Écran de configuration refait : hôte ; **type de connexion** (« HTTP 8998 » /
   « TLS 443 (modem) », bascule espace/j/k — un port personnalisé est
