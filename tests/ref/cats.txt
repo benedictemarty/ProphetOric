@@ -1,4 +1,4 @@
-ProphetOric 0.1.0            categories
+ProphetOric 0.2.0            categories
 
 > oric-games (1)
 
@@ -25,4 +25,4 @@ ProphetOric 0.1.0            categories
 
 
 
-j/k choisir  entree ouvrir  q quitter
+j/k entree=ouvrir c=config q=quitter

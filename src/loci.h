@@ -1,0 +1,26 @@
+/*
+ * loci.h — API MIA du LOCI (op `$03AF`, xstack `$03AC`, stub `$03B0`) :
+ * fichiers sur le stockage du LOCI (flash `0:`, clés USB `1:`-`4:`, SD).
+ * Protocole relevé dans ~/bbsoric/client/loci.s (validé sur LOCI réel) et
+ * ~/Oric1/src/io/loci_fs.c (émulation) : les arguments se POUSSENT en
+ * écrivant `$03AC` (chaîne : NUL d'abord puis les octets à l'envers), A/X
+ * dans `$03B4/$03B6`, l'op dans `$03AF`, puis JSR `$03B0` ; retour A = octet
+ * bas, X = octet haut (négatif = erreur, code dans `$03AD`).
+ */
+#ifndef LOCI_H
+#define LOCI_H
+
+#define LOCI_O_RDONLY 0x01
+#define LOCI_O_WRONLY 0x02
+#define LOCI_O_CREAT  0x10
+#define LOCI_O_TRUNC  0x20
+
+unsigned char loci_present(void);                                  /* signature A9/A2/60 en $03B3/5/7 */
+int  loci_open(const char *path, unsigned char flags);            /* fd ≥ 0, ou < 0 */
+int  loci_read(unsigned char fd, unsigned char *buf, unsigned char n);   /* octets lus (0 = fin), < 0 erreur */
+int  loci_write(unsigned char fd, const unsigned char *buf, unsigned char n); /* octets écrits, < 0 erreur */
+int  loci_close(unsigned char fd);
+int  loci_mkdir(const char *path);
+unsigned int loci_errno(void);
+
+#endif

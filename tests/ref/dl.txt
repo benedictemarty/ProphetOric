@@ -25,4 +25,4 @@ fichiers : 1
 
 
 
-g telecharger sur le LOCI   b retour
+termine : 1 fichier(s) - b retour

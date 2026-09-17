@@ -98,34 +98,52 @@ unsigned char http_parse_headers(const char *h)
 /* Envoie une chaîne sans CR final. */
 static void tx(const char *s) { while (*s) serial_send(*s++); }
 
+static unsigned char modem_ready;          /* ATZ fait une fois (un ATZ relance l'association Wi-Fi du PicoWiFi) */
+
 static unsigned char connect_modem(void)
 {
-    at_send("ATZ");
-    if (!at_wait_response("OK", 3000)) {
-        at_hangup();                          /* modem resté en ligne (OricTel) */
+    unsigned char tries;
+    if (!modem_ready) {
         at_send("ATZ");
-        if (!at_wait_response("OK", 3000)) { http_error = "pas de modem (ATZ)"; return 0; }
+        if (!at_wait_response("OK", 3000)) {
+            at_hangup();                          /* modem resté en ligne (OricTel) */
+            at_send("ATZ");
+            if (!at_wait_response("OK", 3000)) { http_error = "pas de modem (ATZ)"; return 0; }
+        }
+        modem_ready = 1;
     }
-    at_wait_ip(15000);                        /* IP Wi-Fi prête (immédiat sinon) */
-    /* PicoWiFiModemUSB : '-' = pas de telnet (sinon CR → CR NUL, requête refusée 400),
-     * '#' = TLS terminé par le modem (port 443 : firmware ≥ 0.2.0, émulé par Phosphoric ;
-     * non vérifié sur matériel). */
-    tx(strcmp(http_port, "443") == 0 ? "ATD-#" : "ATD-"); tx(http_host); tx(":"); tx(http_port); serial_send(0x0D); serial_tx_flush();
-    if (!at_wait_response("CONNECT", 20000)) { http_error = "connexion refusee (ATD)"; return 0; }
-    return 1;
+    /* Pas d'attente ATI « CONNECTED TO WIFI » (OricTel) : l'émulation répond « WiFi: x UP »
+     * et l'attente durait 15 s par requête. On compose, et on réessaie si le Wi-Fi n'est pas
+     * encore associé (NO CARRIER). PicoWiFiModemUSB : '-' = pas de telnet (sinon CR → CR NUL,
+     * requête refusée 400), '#' = TLS terminé par le modem (port 443 : firmware ≥ 0.2.0,
+     * émulé par Phosphoric ; non vérifié sur matériel). */
+    for (tries = 0; tries < 3; ++tries) {
+        tx(strcmp(http_port, "443") == 0 ? "ATD-#" : "ATD-"); tx(http_host); tx(":"); tx(http_port); serial_send(0x0D); serial_tx_flush();
+        if (at_wait_response("CONNECT", 20000)) return 1;
+        delay_ms(3000);
+    }
+    http_error = "connexion refusee (ATD)";
+    return 0;
 }
 
-unsigned char http_get(const char *path, const char *range, char *buf, unsigned int max, unsigned int *len)
+/* fin de réponse : le serveur ferme (Connection: close) → le modem repasse en mode
+ * commande et émet NO CARRIER ; sinon (réponse tronquée, serveur muet) échappement +++/ATH. */
+static void finish(void)
+{
+    if (!at_wait_response("NO CARRIER", 3000)) at_hangup();
+}
+
+/* connexion + requête + en-têtes ; retour 1 si les en-têtes sont valides (http_status posé) */
+static unsigned char request(const char *path, const char *range)
 {
     unsigned int n = 0;
     unsigned char b, state = 0;
-    unsigned long want;
 
-    *len = 0; http_status = 0; http_error = 0;
+    http_status = 0; http_error = 0;
     if (!connect_modem()) return 0;
 
     tx("GET "); tx(path); tx(" HTTP/1.1\r\nHost: "); tx(http_host);
-    tx("\r\nResponseFormat: cli\r\nConnection: close\r\nUser-Agent: ProphetOric/0.1\r\n");
+    tx("\r\nResponseFormat: cli\r\nConnection: close\r\nUser-Agent: ProphetOric/0.2\r\n");
     if (range) { tx("Range: "); tx(range); tx("\r\n"); }
     if (http_pass[0]) { tx("X-Prophet-Password: "); tx(http_pass); tx("\r\n"); }
     tx("\r\n");
@@ -142,15 +160,44 @@ unsigned char http_get(const char *path, const char *range, char *buf, unsigned 
     }
     hdr[n] = 0;
     if (!http_parse_headers(hdr)) { http_error = "reponse HTTP invalide"; at_hangup(); return 0; }
+    return 1;
+}
 
+unsigned char http_get(const char *path, const char *range, char *buf, unsigned int max, unsigned int *len)
+{
+    unsigned int n = 0;
+    unsigned char b;
+    unsigned long want;
+
+    *len = 0;
+    if (!request(path, range)) return 0;
     want = http_length;
-    n = 0;
     while (n < max - 1 && (want == 0xFFFFFFFFUL || n < want)) {
         if (!rx_byte(&b, RX_IDLE_TIMEOUT_MS)) break;        /* fin par silence (sans Content-Length) */
         buf[n++] = (char)b;
     }
     buf[n] = 0;
     *len = n;
-    at_hangup();                              /* le serveur ferme : drain + +++ + ATH */
+    finish();
+    return 1;
+}
+
+unsigned char http_get_stream(const char *path, const char *range, http_sink sink, unsigned long *len)
+{
+    static unsigned char block[128];
+    unsigned char b, k = 0;
+    unsigned long n = 0, want;
+
+    *len = 0;
+    if (!request(path, range)) return 0;
+    want = http_length;
+    while (want == 0xFFFFFFFFUL || n < want) {
+        if (!rx_byte(&b, RX_IDLE_TIMEOUT_MS)) break;
+        block[k++] = b; ++n;
+        if (k == sizeof block) { if (!sink(block, k)) { http_error = "ecriture impossible"; at_hangup(); return 0; } k = 0; }
+    }
+    if (k && !sink(block, k)) { http_error = "ecriture impossible"; at_hangup(); return 0; }
+    *len = n;
+    finish();
     return 1;
 }

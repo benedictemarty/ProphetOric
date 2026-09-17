@@ -13,7 +13,7 @@ PORT ?= 8998
 TEST_HOST_ADDR ?= 127.0.0.1
 TEST_PORT ?= 18994
 
-CSRC = src/main.c src/http.c src/cli.c src/serial.c src/serial_tx.c src/at_modem.c
+CSRC = src/main.c src/http.c src/cli.c src/serial.c src/serial_tx.c src/at_modem.c src/loci.c src/download.c src/config.c
 ASRC = src/serial_asm.s src/tapehdr.s
 OBJ  = $(patsubst src/%.c,$(BLD)/%.o,$(CSRC)) $(patsubst src/%.s,$(BLD)/%.o,$(ASRC))
 TOBJ = $(patsubst src/%.c,$(BLD)/t_%.o,$(CSRC)) $(patsubst src/%.s,$(BLD)/%.o,$(ASRC))

@@ -1,5 +1,34 @@
 # Changelog — ProphetOric
 
+## [0.2.0] — 2026-09-17 — Sprint 2 : téléchargement sur le LOCI, configuration
+### Ajouté
+- `src/loci.c/.h` : API MIA du LOCI en C (op `$03AF`, xstack `$03AC`, stub
+  `$03B0`, retour A/X) — `open/read/write/close/mkdir`, détection par la
+  signature `$03B3/5/7`. Protocole relevé dans `~/bbsoric/client/loci.s`
+  (validé sur LOCI réel) et `~/Oric1/src/io/loci_fs.c`.
+- Téléchargement (`g` sur la fiche) : `/files/<id>` puis chaque
+  `/files/<id>/<n>` **en flux** (`http_get_stream`, blocs de 128 octets
+  écrits au fil de la réception, sans tout garder en RAM) dans le dossier
+  cible du LOCI (`mkdir` si besoin) ; contrôle par `Content-Length`.
+- `PROPHET.CFG` sur le LOCI (hôte / port / dossier / mot de passe), lu au
+  démarrage ; écran **configuration** (`c`) avec saisie des 4 champs
+  (entrée = suivant, échap = annuler), enregistrement.
+- Tests : scénarios `dl` (+ `dl_file` : `zorg.tap` identique sur le flash
+  root du LOCI), `secret` (mot de passe dans `PROPHET.CFG` → paquet réservé
+  visible), `config` (+ `config_file` : fichier écrit, `jeux/dune.tap`
+  téléchargé) ; `ONLY=<nom>` pour un seul scénario.
+### Modifié
+- Modem : `ATZ` une seule fois ; plus d'attente `ATI` « CONNECTED TO WIFI »
+  (l'émulation répond « WiFi: x UP » → 15 s perdues par requête) ; jusqu'à 3
+  `ATD` avec 3 s d'attente ; fin de réponse = `NO CARRIER` (le serveur ferme)
+  et `+++`/`ATH` seulement en secours. Une requête ≈ 2-3 s ; passe de tests
+  complète ≈ 3 min au lieu de 12.
+- Débit : Phosphoric transfère l'ACIA **instantanément** (« baud rate 0
+  (external clock) », `--serial-baud N` pour un rythme réaliste) — le 1200
+  bauds d'OricTel n'est donc pas mesurable ici ; à traiter avec `--serial-baud`
+  au sprint 3.
+- TAP : 15,7 Ko (CODE 14 Ko, BSS 4,9 Ko).
+
 ## [0.1.0] — 2026-09-17 — Sprint 1 : catalogue texte
 ### Ajouté
 - Client fonctionnel en émulation : `build/prophet.tap` (cc65 `-t atmos`,

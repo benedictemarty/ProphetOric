@@ -2,15 +2,19 @@
  * main.c — ProphetOric, client texte du dépôt Prophet pour Oric + LOCI.
  * Sprint 1 : catégories → liste paginée → fiche. Écran TEXT 40×28 (conio cc65).
  * Touches : j/k (ou flèches) choisir, entrée = ouvrir, b = retour,
- * n/p = page suivante/précédente, q = quitter (retour BASIC).
+ * n/p = page suivante/précédente, g = télécharger (fiche), c = configuration,
+ * q = quitter (retour BASIC).
  */
 #include <conio.h>
 #include <string.h>
 #include "http.h"
 #include "cli.h"
 #include "serial.h"
+#include "download.h"
+#include "config.h"
+#include "loci.h"
 
-#define VERSION "0.1.0"
+#define VERSION "0.2.0"
 #define IPP 16                       /* programmes par page (16 lignes de liste) */
 #define ROWS 28
 #define COLS 40
@@ -85,6 +89,53 @@ static unsigned char fetch(const char *path)
     return 1;
 }
 
+/* saisie d'une ligne à la position y : entrée = valider, echap = annuler (0) */
+static unsigned char edit_field(unsigned char y, char *buf, unsigned char max)
+{
+    unsigned char n = (unsigned char)strlen(buf), c;
+    for (;;) {
+        gotoxy(0, y); cputs(buf); cputc('_'); cclear(COLS - wherex());
+        c = cgetc();
+        if (c == CH_ENTER || c == '\r' || c == '\n') { buf[n] = 0; return 1; }
+        if (c == CH_ESC) return 0;
+        if (c == CH_DEL || c == 8 || c == 127) { if (n) buf[--n] = 0; continue; }
+        if (n < max && c >= 32 && c < 127 && c != ' ') { buf[n++] = (char)c; buf[n] = 0; }
+    }
+}
+
+static void config_screen(void)
+{
+    char host[40], port[6], dir[32], pass[32];
+    strcpy(host, http_host); strcpy(port, http_port); strcpy(dir, dl_dir); strcpy(pass, http_pass);
+    title("configuration");
+    line(2, "serveur (hote ou IP) :");
+    line(5, "port (8998 = HTTP, 443 = TLS modem) :");
+    line(8, "dossier LOCI (vide = courant, 1:JEUX) :");
+    line(11, "mot de passe zones reservees (vide) :");
+    status("entree = champ suivant   echap = annuler");
+    if (!edit_field(3, host, 38) || !host[0]) goto out;
+    if (!edit_field(6, port, 5) || !port[0]) goto out;
+    if (!edit_field(9, dir, 30)) goto out;
+    if (!edit_field(12, pass, 30)) goto out;
+    strcpy(http_host, host); strcpy(http_port, port); strcpy(dl_dir, dir); strcpy(http_pass, pass);
+    status(config_save() ? "enregistre dans PROPHET.CFG - b retour" : "applique (PROPHET.CFG non ecrit) - b retour");
+    while (key() != 'b') ;
+    return;
+out:
+    status("annule - b retour");
+    while (key() != 'b') ;
+}
+
+static void dl_progress_cb(const char *name, unsigned long bytes)
+{
+    char s[COLS + 1]; unsigned char k; unsigned long v = bytes; char d[12]; unsigned char m = 0;
+    strcpy(s, bytes ? "recu " : "telechargement "); strncat(s, name, 20);
+    if (bytes) { k = (unsigned char)strlen(s); s[k++] = ' ';
+        do { d[m++] = '0' + (unsigned char)(v % 10); v /= 10; } while (v); while (m) s[k++] = d[--m];
+        s[k] = 0; strcat(s, " octets"); }
+    status(s);
+}
+
 static void draw_cats(unsigned char sel)
 {
     unsigned char i;
@@ -101,7 +152,7 @@ static void draw_cats(unsigned char sel)
         l[k++] = ')'; l[k] = 0;
         line(2 + i, l);
     }
-    status("j/k choisir  entree ouvrir  q quitter");
+    status("j/k entree=ouvrir c=config q=quitter");
 }
 
 static void draw_list(unsigned char sel)
@@ -147,8 +198,16 @@ static void info_screen(const char *id)
     ++y;
     if (info.description) y = wrap(y, info.description);
     { char s[COLS + 1]; strcpy(s, "fichiers : "); s[11] = '0' + (info.files % 10); s[12] = 0; if (y < ROWS - 2) line(y + 1, s); }
-    status("b retour");
-    while (key() != 'b') ;
+    status("g telecharger sur le LOCI   b retour");
+    for (;;) {
+        unsigned char c = key();
+        if (c == 'b') return;
+        if (c == 'g') {
+            unsigned char n = download_package(id, dl_progress_cb);
+            if (n) { char s[COLS + 1]; strcpy(s, "termine : "); s[10] = '0' + n; s[11] = 0; strcat(s, " fichier(s) - b retour"); status(s); }
+            else { char s[COLS + 1]; strcpy(s, "echec : "); strncat(s, dl_error ? dl_error : "?", 30); status(s); }
+        }
+    }
 }
 
 static void list_screen(void)
@@ -179,11 +238,13 @@ int main(void)
     title("");
     if (!serial_probe(ACIA_BASE_LOCI)) { status("pas d'ACIA 6551 en $0380 (LOCI ?)"); cgetc(); return 1; }
     serial_init(ACIA_BASE_LOCI);
+    config_load();                                   /* PROPHET.CFG sur le LOCI, sinon valeurs compilées */
     if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; }
     for (;;) {
         draw_cats(sel);
         c = key();
         if (c == 'q') { clrscr(); return 0; }
+        if (c == 'c') { config_screen(); if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; } }
         if (c == 'j' && sel + 1 < ncats) ++sel;
         if (c == 'k' && sel) --sel;
         if (c == '\n' && ncats) {

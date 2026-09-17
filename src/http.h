@@ -29,4 +29,10 @@ unsigned char http_parse_headers(const char *hdr);
  * Retour 1 si une réponse a été reçue (voir http_status), 0 sinon (http_error). */
 unsigned char http_get(const char *path, const char *range, char *buf, unsigned int max, unsigned int *len);
 
+/* Variante en flux : le corps est remis par blocs à `sink(bloc, n)` (n ≤ 128) au
+ * fur et à mesure de la réception (téléchargement vers le LOCI sans tout garder en
+ * RAM). sink renvoie 0 pour interrompre. *len = octets reçus. */
+typedef unsigned char (*http_sink)(const unsigned char *block, unsigned char n);
+unsigned char http_get_stream(const char *path, const char *range, http_sink sink, unsigned long *len);
+
 #endif
