@@ -8,6 +8,8 @@
 
 char dl_dir[32] = "";
 const char *dl_error;
+char dl_last_tap[64] = "";
+unsigned char dl_skipped;
 static int cur_fd = -1;
 static char list[512];
 static struct cli_file files[CLI_MAX_FILES];
@@ -30,10 +32,13 @@ unsigned char download_package(const char *id, dl_progress progress)
     if (http_status != 200) { dl_error = "fichiers introuvables"; return 0; }
     if (!cli_parse_files(list, files, CLI_MAX_FILES, &nf) || nf == 0) { dl_error = "liste de fichiers invalide"; return 0; }
     if (dl_dir[0]) loci_mkdir(dl_dir);            /* existe déjà : erreur ignorée */
+    dl_last_tap[0] = 0; dl_skipped = 0;
     for (i = 0; i < nf; ++i) {
         unsigned long got;
         char dst[64];
-        if (strlen(files[i].name) > 30) { dl_error = "nom de fichier trop long"; return done; }
+        unsigned char ln = (unsigned char)strlen(files[i].name);
+        if (ln > 30) { dl_error = "nom de fichier trop long"; return done; }
+        if (ln > 4 && (!strcmp(files[i].name + ln - 4, ".zip") || !strcmp(files[i].name + ln - 4, ".ZIP"))) { ++dl_skipped; continue; }
         dst[0] = 0;
         if (dl_dir[0]) { strcpy(dst, dl_dir); strcat(dst, "/"); }
         strcat(dst, files[i].name);
@@ -49,6 +54,7 @@ unsigned char download_package(const char *id, dl_progress progress)
         loci_close((unsigned char)cur_fd);
         if (http_length != 0xFFFFFFFFUL && got != http_length) { dl_error = "fichier incomplet"; return done; }
         if (progress) progress(files[i].name, got);
+        if (ln > 4 && (!strcmp(files[i].name + ln - 4, ".tap") || !strcmp(files[i].name + ln - 4, ".TAP")) && !dl_last_tap[0]) strcpy(dl_last_tap, dst);
         ++done;
     }
     return done;

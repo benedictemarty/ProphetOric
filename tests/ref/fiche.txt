@@ -1,4 +1,4 @@
-ProphetOric 0.2.0                 fiche
+ProphetOric 0.3.0                 fiche
 
 Zorg
 par :

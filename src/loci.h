@@ -22,5 +22,7 @@ int  loci_write(unsigned char fd, const unsigned char *buf, unsigned char n); /*
 int  loci_close(unsigned char fd);
 int  loci_mkdir(const char *path);
 unsigned int loci_errno(void);
+#define LOCI_MNT_TAP 4                                              /* lecteur cassette (0-3 = disquettes) */
+int  loci_mount(unsigned char drive, const char *path);           /* monte un .tap (4) ou un .dsk (0-3) */
 
 #endif

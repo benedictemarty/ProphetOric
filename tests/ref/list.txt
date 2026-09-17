@@ -1,4 +1,4 @@
-ProphetOric 0.2.0            oric-games
+ProphetOric 0.3.0            oric-games
 
 > Zorg
 

@@ -1,5 +1,30 @@
 # Changelog — ProphetOric
 
+## [0.3.0] — 2026-09-17 — Sprint 3 : lancement, débit réaliste
+### Ajouté
+- **Lancer** (`l` après un téléchargement) : le `.tap` reçu est monté comme
+  cassette sur le LOCI (op `MOUNT`, lecteur 4) et le client rend la main au
+  BASIC avec le message « Tapez CLOAD"" » — même geste que le menu du LOCI ;
+  pas d'auto-frappe (la ROM 1.1 n'a pas de tampon clavier). Test `launch` +
+  `launch_run` : `zorg.tap` (BASIC autorun fabriqué par `bas2tap` de
+  Phosphoric) chargé par `CLOAD""` et exécuté (« HELLO FROM PROPHET TAP »).
+- Fichiers `.zip` ignorés au téléchargement (inutilisables sur Oric ; 461
+  titres du catalogue — décision serveur en attente), compteur affiché.
+- Test `baud` + `baud_1200` : `--serial-baud 1200 --serial-buffer 32` (anneau
+  du firmware LOCI devant le 6551) → fiche et téléchargement intacts.
+- Tests isolés des clés USB du PC : `--loci-usb none` (Phosphoric attache
+  sinon `/media/$USER` comme volumes LOCI — un test ne doit jamais y écrire).
+### Corrigé
+- **Plantage après l'écran de configuration** : une ligne d'état de 40
+  caractères exactement faisait passer `CURS_Y` à 28 (cc65 atmos `cputc`
+  avance la ligne après la 40e colonne) ; `cclear` lisait alors la table des
+  adresses écran hors bornes et écrivait 40 espaces dans le code (`$07BB`,
+  trouvé par `--trace` + `--dump-ram-at`). `line()` n'écrit plus jamais 40
+  `cputc` suivis d'autre chose et replace le curseur.
+### Non fait
+- `.dsk` : montage Microdisc (lecteurs 0-3) non branché ; 9600/19200 bauds :
+  non testés (le PicoWiFi réel : débit non vérifié).
+
 ## [0.2.0] — 2026-09-17 — Sprint 2 : téléchargement sur le LOCI, configuration
 ### Ajouté
 - `src/loci.c/.h` : API MIA du LOCI en C (op `$03AF`, xstack `$03AC`, stub

@@ -17,6 +17,7 @@ typedef int (*stub_fn)(void);
 #define OP_READ_XSTACK 0x16
 #define OP_WRITE_XSTACK 0x18
 #define OP_MKDIR 0x83
+#define OP_MOUNT 0x90
 
 unsigned char loci_present(void)
 {
@@ -72,4 +73,11 @@ int loci_read(unsigned char fd, unsigned char *buf, unsigned char n)
     if (r <= 0) return r;
     for (i = 0; i < (unsigned char)r; ++i) buf[i] = REG(XSTACK);   /* lire $03AC dépile dans l'ordre */
     return r;
+}
+
+int loci_mount(unsigned char drive, const char *path)
+{
+    push_zstring(path);
+    REG(AREG) = drive; REG(XREG) = 0;
+    return CALL(OP_MOUNT);
 }

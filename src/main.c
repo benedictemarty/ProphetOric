@@ -2,11 +2,13 @@
  * main.c — ProphetOric, client texte du dépôt Prophet pour Oric + LOCI.
  * Sprint 1 : catégories → liste paginée → fiche. Écran TEXT 40×28 (conio cc65).
  * Touches : j/k (ou flèches) choisir, entrée = ouvrir, b = retour,
- * n/p = page suivante/précédente, g = télécharger (fiche), c = configuration,
+ * n/p = page suivante/précédente, g = télécharger (fiche), l = lancer (monte le
+ * .tap sur le LOCI et rend la main au BASIC pour CLOAD""), c = configuration,
  * q = quitter (retour BASIC).
  */
 #include <conio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "http.h"
 #include "cli.h"
 #include "serial.h"
@@ -14,7 +16,7 @@
 #include "config.h"
 #include "loci.h"
 
-#define VERSION "0.2.0"
+#define VERSION "0.3.0"
 #define IPP 16                       /* programmes par page (16 lignes de liste) */
 #define ROWS 28
 #define COLS 40
@@ -27,13 +29,18 @@ static struct cli_info info;
 static char cat_name[24];
 static unsigned int page;
 
+/* Écrit une ligne complète (tronquée/complétée à 40 colonnes). Jamais 40 cputc
+ * suivis d'autre chose : conio (cc65 atmos) incrémente CURS_Y après la 40e colonne
+ * et, sur la dernière ligne, CURS_Y = 28 déborde la table des adresses écran —
+ * les 40 espaces suivants partaient dans le code ($07BB, plantage du 17/09). */
 static void line(unsigned char y, const char *s)
 {
-    unsigned char n = (unsigned char)strlen(s);
-    gotoxy(0, y);
+    unsigned char n = (unsigned char)strlen(s), i;
     if (n > COLS) n = COLS;
-    while (n--) cputc(*s++);
-    cclear(COLS - wherex());
+    gotoxy(0, y);
+    for (i = 0; i < n; ++i) cputc(s[i]);
+    if (n < COLS) cclear(COLS - n);
+    gotoxy(0, y);
 }
 
 static void title(const char *t)
@@ -94,7 +101,7 @@ static unsigned char edit_field(unsigned char y, char *buf, unsigned char max)
 {
     unsigned char n = (unsigned char)strlen(buf), c;
     for (;;) {
-        gotoxy(0, y); cputs(buf); cputc('_'); cclear(COLS - wherex());
+        { char l[COLS + 2]; strcpy(l, buf); strcat(l, "_"); line(y, l); }
         c = cgetc();
         if (c == CH_ENTER || c == '\r' || c == '\n') { buf[n] = 0; return 1; }
         if (c == CH_ESC) return 0;
@@ -204,8 +211,16 @@ static void info_screen(const char *id)
         if (c == 'b') return;
         if (c == 'g') {
             unsigned char n = download_package(id, dl_progress_cb);
-            if (n) { char s[COLS + 1]; strcpy(s, "termine : "); s[10] = '0' + n; s[11] = 0; strcat(s, " fichier(s) - b retour"); status(s); }
+            if (n) { char s[COLS + 1]; strcpy(s, "termine : "); s[10] = '0' + n; s[11] = 0; strcat(s, dl_skipped ? " fich. (zip ignore)" : " fichier(s)"); strcat(s, dl_last_tap[0] ? " l=lancer" : " b=retour"); status(s); }
             else { char s[COLS + 1]; strcpy(s, "echec : "); strncat(s, dl_error ? dl_error : "?", 30); status(s); }
+        }
+        if (c == 'l' && dl_last_tap[0]) {
+            /* montage de la cassette sur le LOCI puis retour au BASIC : CLOAD"" charge (et
+             * lance, si autorun) le programme — le LOCI joue la cassette montée. */
+            if (loci_mount(LOCI_MNT_TAP, dl_last_tap) < 0) { status("montage cassette impossible"); continue; }
+            clrscr();
+            cputs("Cassette montee sur le LOCI :\r\n"); cputs(dl_last_tap); cputs("\r\n\r\nTapez  CLOAD\"\"  pour charger.\r\n\r\n");
+            exit(0);
         }
     }
 }

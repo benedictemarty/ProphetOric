@@ -7,4 +7,6 @@ extern char dl_dir[32];             /* dossier cible sur le LOCI ("" = dossier c
 typedef void (*dl_progress)(const char *name, unsigned long bytes);
 unsigned char download_package(const char *id, dl_progress progress);
 extern const char *dl_error;
+extern char dl_last_tap[64];        /* chemin LOCI du dernier .tap téléchargé ("" = aucun) */
+extern unsigned char dl_skipped;    /* fichiers ignorés (.zip : inutilisables sur Oric) */
 #endif

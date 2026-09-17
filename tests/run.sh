@@ -14,16 +14,17 @@ PROPHET_PASSWORD=sesame-test "$PROPHETD" -config "$OUT/prophet.yml" >"$OUT/proph
 trap 'kill $PD 2>/dev/null' EXIT
 for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:18994/cat && break; sleep 0.1; done
 
+EXTRA=""       # options Phosphoric supplémentaires pour un scénario (ex. --serial-baud 1200)
 scenario() {   # nom | frappes (--type-keys, après le chargement) | cycles de capture
     local name=$1 keys=$2 at=$3
     [ -n "${ONLY:-}" ] && [ "$ONLY" != "$name" ] && return 0
     rm -rf "$OUT/flash_$name"; mkdir -p "$OUT/flash_$name"          # flash root du LOCI (0:) propre à chaque scénario
     [ -f "$OUT/cfg_$name" ] && cp "$OUT/cfg_$name" "$OUT/flash_$name/PROPHET.CFG"
     if [ -n "$keys" ]; then
-        "$EMU" -r "$ROM" -t "$TAP" -f --loci --loci-flash "$OUT/flash_$name" --serial picowifi:Test --serial-buffer 4096 --headless --realtime \
+        "$EMU" -r "$ROM" -t "$TAP" -f --loci --loci-usb none --loci-flash "$OUT/flash_$name" --serial picowifi:Test ${EXTRA:---serial-buffer 4096} --headless --realtime \
             --cycles $((at + 100000)) --type-keys "$keys" --screenshot-text-at "$at:$OUT/$name.txt" >"$OUT/$name.log" 2>&1
     else
-        "$EMU" -r "$ROM" -t "$TAP" -f --loci --loci-flash "$OUT/flash_$name" --serial picowifi:Test --serial-buffer 4096 --headless --realtime \
+        "$EMU" -r "$ROM" -t "$TAP" -f --loci --loci-usb none --loci-flash "$OUT/flash_$name" --serial picowifi:Test ${EXTRA:---serial-buffer 4096} --headless --realtime \
             --cycles $((at + 100000)) --screenshot-text-at "$at:$OUT/$name.txt" >"$OUT/$name.log" 2>&1
     fi
     if [ "$mode" = ref ]; then cp "$OUT/$name.txt" "$REF/$name.txt"; echo "REF  $name"; cat "$OUT/$name.txt"
@@ -37,6 +38,10 @@ scenario fiche  "12000000:\n\p5\n"  26000000   # fiche Zorg : auteur, descriptio
 scenario dl     "12000000:\n\p5\n\p5g" 40000000   # \pN : un seul chiffre
 if cmp -s "$OUT/flash_dl/zorg.tap" tests/repo/oric-games/zorg/zorg.tap; then echo "PASS dl_file (zorg.tap identique sur le LOCI)"
 else echo "FAIL dl_file"; ls -l "$OUT/flash_dl"; fail=1; fi
+# lancement (l) : .tap monté sur le LOCI, retour au BASIC, CLOAD"" charge et lance le programme autorun
+scenario launch "12000000:\n\p5\n\p5g\p9l\p2CLOAD\"\"\n" 55000000
+if grep -q "HELLO FROM PROPHET TAP" "$OUT/launch.txt"; then echo "PASS launch_run (programme charge par CLOAD depuis la cassette montee)"
+else echo "FAIL launch_run"; grep -v "^$" "$OUT/launch.txt" | head -8; fail=1; fi
 # PROPHET.CFG avec le mot de passe : la liste montre aussi Dune Explorer (zone réservée)
 printf '127.0.0.1\n18994\n\nsesame-test\n' > "$OUT/cfg_secret"
 scenario secret "12000000:\n"       20000000
@@ -46,5 +51,9 @@ scenario config "12000000:c\n\nJEUX\nsesame-test\nb\p5\n\p5\n\p5g" 50000000
 if [ "$(cat "$OUT/flash_config/PROPHET.CFG" 2>/dev/null)" = "$(printf '127.0.0.1\n18994\njeux\nsesame-test')" ] \
    && cmp -s "$OUT/flash_config/jeux/dune.tap" tests/repo/oric-games/dune/dune.tap; then echo "PASS config_file (PROPHET.CFG ecrit, jeux/dune.tap = paquet protege)"
 else echo "FAIL config_file"; cat "$OUT/flash_config/PROPHET.CFG" 2>/dev/null; ls -R "$OUT/flash_config" | head; fail=1; fi
+# débit réaliste : 1200 bauds, anneau de 32 octets comme le firmware LOCI devant le 6551 → fiche + téléchargement intacts
+EXTRA="--serial-baud 1200 --serial-buffer 32" scenario baud "12000000:\n\p9\n\p9\p9g" 70000000
+if cmp -s "$OUT/flash_baud/zorg.tap" tests/repo/oric-games/zorg/zorg.tap && grep -q "termine : 1 fichier" "$OUT/baud.txt"; then echo "PASS baud_1200 (fiche et zorg.tap corrects a 1200 bauds, tampon 32)"
+else echo "FAIL baud_1200"; tail -1 "$OUT/baud.txt"; fail=1; fi
 echo "----"; [ $fail -eq 0 ] && echo "OK" || echo "ECHEC"
 exit $fail
