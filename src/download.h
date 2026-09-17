@@ -5,6 +5,7 @@ extern char dl_dir[32];             /* dossier cible sur le LOCI ("" = dossier c
  * `progress(nom, octets)` est appelé au début et à la fin de chaque fichier.
  * Retour : nombre de fichiers écrits, ou 0 avec un message dans dl_error. */
 typedef void (*dl_progress)(const char *name, unsigned long bytes);
+extern unsigned long dl_base;       /* octets déjà reçus des tranches précédentes du fichier en cours (pour l'indicateur) */
 unsigned char download_package(const char *id, dl_progress progress);
 extern const char *dl_error;
 extern char dl_last_tap[64];        /* chemin LOCI du dernier .tap téléchargé ("" = aucun) */

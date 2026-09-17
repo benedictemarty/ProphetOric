@@ -134,10 +134,28 @@ out:
     while (key() != 'b') ;
 }
 
+/* indicateur d'activité pendant un téléchargement : -\|/ tournant en bas à droite (écriture
+ * directe dans l'écran TEXT, sans passer par conio : quelques cycles, entre deux blocs de
+ * 128 octets à 9600 bauds) et « nn Ko » tous les 1 024 octets */
+static void spinner(unsigned long received)
+{
+    static unsigned char phase;
+    static const char wheel[4] = { '-', '\\', '|', '/' };
+    *(char *)(0xBB80 + (ROWS - 1) * COLS + COLS - 1) = wheel[phase++ & 3];
+    if ((received & 1023) == 0 || phase == 1) {
+        unsigned long kb = (dl_base + received) >> 10; char d[8]; unsigned char m = 0;
+        char *scr = (char *)(0xBB80 + (ROWS - 1) * COLS + COLS - 8);
+        do { d[m++] = '0' + (unsigned char)(kb % 10); kb /= 10; } while (kb && m < 5);
+        while (m < 5) d[m++] = ' ';
+        while (m) *scr++ = d[--m];
+        *scr++ = ' '; *scr++ = 'K';
+    }
+}
+
 static void dl_progress_cb(const char *name, unsigned long bytes)
 {
     char s[COLS + 1]; unsigned char k; unsigned long v = bytes; char d[12]; unsigned char m = 0;
-    strcpy(s, bytes ? "recu " : "telechargement "); strncat(s, name, 20);
+    strcpy(s, bytes ? "recu " : "telechargement "); strncat(s, name, 16);
     if (bytes) { k = (unsigned char)strlen(s); s[k++] = ' ';
         do { d[m++] = '0' + (unsigned char)(v % 10); v /= 10; } while (v); while (m) s[k++] = d[--m];
         s[k] = 0; strcat(s, " octets"); }
@@ -213,7 +231,10 @@ static void info_screen(const char *id)
         unsigned char c = key();
         if (c == 'b') return;
         if (c == 'g') {
-            unsigned char n = download_package(id, dl_progress_cb);
+            unsigned char n;
+            http_tick = spinner;
+            n = download_package(id, dl_progress_cb);
+            http_tick = 0;
             if (n) { char s[COLS + 1]; strcpy(s, "termine : "); s[10] = '0' + n; s[11] = 0; strcat(s, dl_skipped ? " fich. (zip ignore)" : " fichier(s)"); strcat(s, (dl_last_tap[0] || dl_last_dsk[0]) ? " l=lancer" : " b=retour"); status(s); }
             else { char s[COLS + 1]; strcpy(s, "echec : "); strncat(s, dl_error ? dl_error : "?", 30); status(s); }
         }

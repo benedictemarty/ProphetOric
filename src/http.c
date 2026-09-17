@@ -14,6 +14,7 @@ char http_pass[32] = "";
 unsigned int  http_status;
 unsigned long http_length;
 unsigned long http_range_total;
+void (*http_tick)(unsigned long received);
 const char   *http_error;
 
 #define RX_IDLE_TIMEOUT_MS 8000     /* silence maximal entre deux octets */
@@ -220,6 +221,7 @@ unsigned char http_get_stream(const char *path, const char *range, http_sink sin
         if (chunk && !sink(block, chunk)) { http_error = "ecriture impossible"; at_hangup(); return 0; }
         *len += chunk;
         remaining -= chunk;
+        if (http_tick) http_tick(*len);
     }
     finish();
     return 1;

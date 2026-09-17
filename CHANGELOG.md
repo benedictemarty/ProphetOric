@@ -1,5 +1,12 @@
 # Changelog — ProphetOric
 
+## [0.5.1] — 2026-09-17 — Indicateur de téléchargement
+### Ajouté
+- Pendant un téléchargement : roue `-\|/` en bas à droite (un caractère écrit
+  directement dans l'écran TEXT après chaque bloc de 128 octets) et compteur
+  « nn K » tous les 1 024 octets (demande PO). Test `spin_wheel` (capture en
+  cours de transfert, hors comparaison de référence).
+
 ## [0.5.0] — 2026-09-17 — Sprint 5 : tranches Range, reprise, disquette vérifiée
 ### Ajouté
 - `make run` : crée `flash/` (flash du LOCI émulé) avec `microdis.rom`, exclut

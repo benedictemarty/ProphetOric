@@ -13,6 +13,7 @@ const char *dl_error;
 char dl_last_tap[64] = "";
 char dl_last_dsk[64] = "";
 unsigned char dl_skipped;
+unsigned long dl_base;
 static int cur_fd = -1;
 static char list[512];
 static struct cli_file files[CLI_MAX_FILES];
@@ -60,6 +61,7 @@ unsigned char download_package(const char *id, dl_progress progress)
             if (cur_fd < 0) { dl_error = "fichier refuse par le LOCI (dossier ?)"; return done; }
             for (;;) {
                 char range[32];
+                dl_base = total;
                 strcpy(range, "bytes="); ulnum(range + 6, total); strcat(range, "-"); ulnum(range + strlen(range), total + DL_CHUNK - 1);
                 if (http_get_stream(path, range, sink, &got)) {
                     if (http_status == 206 || (http_status == 200 && total == 0)) {

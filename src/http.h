@@ -34,6 +34,7 @@ unsigned char http_get(const char *path, const char *range, char *buf, unsigned 
  * fur et à mesure de la réception (téléchargement vers le LOCI sans tout garder en
  * RAM). sink renvoie 0 pour interrompre. *len = octets reçus. */
 typedef unsigned char (*http_sink)(const unsigned char *block, unsigned char n);
+extern void (*http_tick)(unsigned long received);   /* appelé après chaque bloc de 128 octets (indicateur d'activité), ou NUL */
 unsigned char http_get_stream(const char *path, const char *range, http_sink sink, unsigned long *len);
 
 #endif

@@ -30,7 +30,8 @@ scenario() {   # nom | frappes (--type-keys, après le chargement) | cycles de c
         "$EMU" -r "$ROM" -t "$TAP" -f --loci --loci-usb none --loci-flash "$OUT/flash_$name" --serial picowifi:Test ${EXTRA:---serial-buffer 4096} --headless --realtime \
             --cycles $((at + 100000)) --screenshot-text-at "$at:$OUT/$name.txt" >"$OUT/$name.log" 2>&1
     fi
-    if [ "$mode" = ref ]; then cp "$OUT/$name.txt" "$REF/$name.txt"; echo "REF  $name"; cat "$OUT/$name.txt"
+    if [ -n "${NOREF:-}" ]; then return 0                                    # capture non déterministe (roue) : contrôle à part
+    elif [ "$mode" = ref ]; then cp "$OUT/$name.txt" "$REF/$name.txt"; echo "REF  $name"; cat "$OUT/$name.txt"
     elif cmp -s "$OUT/$name.txt" "$REF/$name.txt"; then echo "PASS $name"
     else echo "FAIL $name"; diff "$REF/$name.txt" "$OUT/$name.txt" | head -20; fail=1; fi
 }
@@ -41,6 +42,10 @@ scenario fiche  "12000000:\n\p5\n"  26000000   # fiche Zorg : auteur, descriptio
 scenario dl     "12000000:\n\p5\n\p5g" 60000000   # zorg.tap = 20 Ko à motif (9600 bauds ≈ 21 s)   # \pN : un seul chiffre
 if ! want dl; then :; elif cmp -s "$OUT/flash_dl/zorg.tap" tests/repo/oric-games/zorg/zorg.tap; then echo "PASS dl_file (zorg.tap identique sur le LOCI)"
 else echo "FAIL dl_file"; ls -l "$OUT/flash_dl"; fail=1; fi
+# indicateur d'activité : capture pendant le téléchargement (≈ 10 s après g) : roue -\|/ et compteur Ko en bas à droite
+NOREF=1 scenario spin   "12000000:\n\p5\n\p5g" 33000000
+if ! want spin; then :; elif tail -1 "$OUT/spin.txt" | grep -qE "^telechargement zorg.tap +[0-9]+ K[-\\|/]$"; then echo "PASS spin_wheel (indicateur -\\|/ et Ko pendant le telechargement)"
+else echo "FAIL spin_wheel"; tail -1 "$OUT/spin.txt" | cat -A; fail=1; fi
 # recherche (s) : "zorg" → liste de résultats (1 : Zorg ; Dune est réservé)
 scenario search "12000000:szorg\n"   22000000
 # lancement (l) : .tap monté sur le LOCI, retour au BASIC, CLOAD"" charge et lance le programme autorun
