@@ -2,6 +2,9 @@
 
 ## [0.5.0] — 2026-09-17 — Sprint 5 : tranches Range, reprise, disquette vérifiée
 ### Ajouté
+- `make run` : crée `flash/` (flash du LOCI émulé) avec `microdis.rom`, exclut
+  les clés USB du PC ; message « fichier refuse par le LOCI (dossier ?) » quand
+  l'ouverture échoue (vu par le PO : `--loci-flash` sur un dossier inexistant).
 - **Téléchargement par tranches `Range: bytes=a-b` de 32 Ko** (réponse 206,
   taille totale lue dans `Content-Range`), une connexion par tranche ;
   **reprise en ajout** (`O_APPEND`) sur coupure, 3 essais par tranche ; un

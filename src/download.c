@@ -57,7 +57,7 @@ unsigned char download_package(const char *id, dl_progress progress)
             unsigned long total = 0, expect = 0xFFFFFFFFUL;
             unsigned char tries = 0, ok = 0;
             cur_fd = loci_open(dst, LOCI_O_WRONLY | LOCI_O_CREAT | LOCI_O_TRUNC);
-            if (cur_fd < 0) { dl_error = "creation du fichier impossible"; return done; }
+            if (cur_fd < 0) { dl_error = "fichier refuse par le LOCI (dossier ?)"; return done; }
             for (;;) {
                 char range[32];
                 strcpy(range, "bytes="); ulnum(range + 6, total); strcat(range, "-"); ulnum(range + strlen(range), total + DL_CHUNK - 1);
