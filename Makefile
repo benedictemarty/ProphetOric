@@ -45,7 +45,8 @@ $(OUT): $(OBJ) $(CFG)
 $(TESTOUT): $(TOBJ) $(CFG)
 	$(LD65) -C $(CFG) -o $@ $(TOBJ) -m $(BLD)/prophet-test.map $(TARGET).lib
 
-FLASH ?= flash   # flash du LOCI émulé (0:) : PROPHET.CFG, fichiers téléchargés, microdis.rom pour le boot disquette
+# flash du LOCI émulé (0:) : PROPHET.CFG, fichiers téléchargés, microdis.rom pour le boot disquette
+FLASH ?= flash
 run: $(OUT)      ## Phosphoric (fenêtre SDL) + LOCI + modem PicoWiFi émulé (vraies sockets) vers prophet.3617.fr
 	mkdir -p $(FLASH); [ -f $(FLASH)/microdis.rom ] || cp $(HOME)/Oric1/roms/microdis.rom $(FLASH)/
 	$(EMU) -r $(EMU_ROM) -t $(OUT) -f --loci --loci-usb none --loci-flash $(FLASH) --serial picowifi:ProphetOric --serial-buffer 32
