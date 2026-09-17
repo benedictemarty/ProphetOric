@@ -10,3 +10,4 @@ __pycache__/
 *.key
 memory.dump
 *.dump
+tests/repo/oric-utils/

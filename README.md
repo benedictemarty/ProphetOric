@@ -6,19 +6,19 @@ Client du dépôt de programmes **Prophet** (`prophet.3617.fr`, serveur
 catalogue Oric (zone réservée, mot de passe), fiche, téléchargement du
 `.tap`/`.dsk` sur le stockage du LOCI, lancement.
 
-**État : sprint 3 — lancement** (`build/prophet.tap`, 16,4 Ko) :
-catégories → liste paginée → fiche → `g` télécharge sur le LOCI → `l` monte
-la cassette et `CLOAD""` lance le programme ; `PROPHET.CFG` et écran de
-configuration (`c`) ; via le modem PicoWiFi émulé de Phosphoric (vraies
-sockets), vérifié aussi à 1200 bauds avec un tampon de 32 octets. Validation **en émulation uniquement**
+**État : sprint 4** (`build/prophet.tap`, ~17 Ko) : catégories / recherche →
+liste paginée → fiche → `g` télécharge sur le LOCI → `l` monte la cassette
+(`CLOAD""`) ou démarre la disquette (`MIA_BOOT`) ; `PROPHET.CFG` et écran de
+configuration (`c`) ; ACIA à **9600 bauds**, vérifié avec l'anneau de 32 octets
+du firmware LOCI ; via le modem PicoWiFi émulé de Phosphoric (vraies sockets). Validation **en émulation uniquement**
 (Phosphoric, `~/Oric1`) : le PO n'a pas le matériel.
 
 ```
 make            # build/prophet.tap (prophet.3617.fr:8998)
 make run        # Phosphoric SDL + LOCI + modem PicoWiFi émulé → prophet.3617.fr
-make test       # tests hôte (cli, http sur faux modem) + 8 scénarios Phosphoric headless → prophetd local (ONLY=nom)
+make test       # tests hôte (cli, http sur faux modem) + 9 scénarios Phosphoric headless → prophetd local (ONLY=nom ; LONG=1 : disquette 1 Mo, 18 min)
 ```
-Touches : j/k (flèches) choisir, entrée ouvrir, b retour, n/p page, g télécharger (fiche), l lancer (cassette montée + CLOAD""), c configuration, q quitter.
+Touches : j/k (flèches) choisir, entrée ouvrir, b retour, n/p page, s chercher, g télécharger (fiche), l lancer (cassette montée + CLOAD"" / disquette + MIA_BOOT), c configuration, q quitter.
 
 | | |
 |---|---|

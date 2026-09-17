@@ -48,7 +48,7 @@
  *   Attention datasheet 6551 : TIC=01 (comme dans $05/$07) = IRQ TX ACTIVEE.
  *   TDRE etant leve en permanence, $05/$07 provoquaient une tempete d'IRQ
  *   (gel v0.3.3/v0.3.4). $0B (v0.3.2) etait correct depuis le debut. */
-#define ACIA_CTRL_LOCI 0x18
+#define ACIA_CTRL_LOCI 0x1E   /* ProphetOric : 9600 bauds (OricTel : 0x18 = 1200) */
 #define ACIA_CMD_LOCI  0x0B
 
 /**

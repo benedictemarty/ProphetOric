@@ -1,5 +1,36 @@
 # Changelog — ProphetOric
 
+## [0.4.0] — 2026-09-17 — Sprint 4 : disquettes, 9600 bauds, recherche
+### Ajouté
+- **Lancer une disquette** (`l` après un `.dsk`) : montage en lecteur A (op
+  `MOUNT` 0) puis `MIA_BOOT` (Microdisc + BASIC 1.1) — le LOCI bascule les
+  ROM et resette l'Oric, qui démarre sur la disquette téléchargée. Test
+  `dsk_boot` (`LONG=1` : disquette Sedoric de 1 Mo générée à la volée par
+  `tap2sedoric` depuis `~/Oric1/disks/SEDO40u.DSK`, hors git ; 18 min).
+- **Recherche** (`s` sur les catégories) : `/search/<clé>` (titre, auteur,
+  description), résultats paginés comme une catégorie. Test `search`.
+- **9600 bauds** (Control `$1E`, OricTel : `$18` = 1200) : 8× plus vite ;
+  19200 perd le dialogue AT avec un anneau de 32 octets. 1 Mo ≈ 18 min.
+  Non vérifié sur LOCI + PicoWiFi réels.
+### Corrigé
+- **Réception à 9600 bauds avec l'anneau de 32 octets du LOCI** : (1) les
+  en-têtes étaient analysés après coup (≈ 100 ms de `strncmp` en cc65)
+  pendant que le corps continuait d'arriver → 32 premiers octets perdus ;
+  analyse désormais **au fil des octets** (statut + `Content-Length`) ;
+  (2) la boucle du corps faisait de l'arithmétique 32 bits par octet
+  (> 1 000 cycles) → boucle serrée par blocs de 128 (8 bits), longueur
+  restante décomptée par bloc. Vérifié : 20 Ko à motif identiques à 9600
+  bauds avec `--serial-buffer 32` (test `baud_ring32`, fichier
+  `tests/repo/oric-games/zorg/zorg.tap` remplacé par un motif de 20 Ko ; le
+  `.tap` BASIC autorun est un paquet à part, `oric-games/hello`, trouvé par la
+  recherche dans le test de lancement). Même correction dans `http_get`
+  (la description de la fiche perdait des caractères).
+- Listes demandées en `sort=date&ord=desc` (comme ProphetGui).
+### Constaté (émulateur)
+- Phosphoric rythme l'ACIA d'après le registre Control (1200 bauds dès que
+  `serial_init` écrit `$18` ; « instant transfer » seulement avec Control
+  `$00`) : les mesures précédentes étaient donc à 1200 bauds.
+
 ## [0.3.0] — 2026-09-17 — Sprint 3 : lancement, débit réaliste
 ### Ajouté
 - **Lancer** (`l` après un téléchargement) : le `.tap` reçu est monté comme

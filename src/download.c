@@ -9,6 +9,7 @@
 char dl_dir[32] = "";
 const char *dl_error;
 char dl_last_tap[64] = "";
+char dl_last_dsk[64] = "";
 unsigned char dl_skipped;
 static int cur_fd = -1;
 static char list[512];
@@ -32,7 +33,7 @@ unsigned char download_package(const char *id, dl_progress progress)
     if (http_status != 200) { dl_error = "fichiers introuvables"; return 0; }
     if (!cli_parse_files(list, files, CLI_MAX_FILES, &nf) || nf == 0) { dl_error = "liste de fichiers invalide"; return 0; }
     if (dl_dir[0]) loci_mkdir(dl_dir);            /* existe déjà : erreur ignorée */
-    dl_last_tap[0] = 0; dl_skipped = 0;
+    dl_last_tap[0] = 0; dl_last_dsk[0] = 0; dl_skipped = 0;
     for (i = 0; i < nf; ++i) {
         unsigned long got;
         char dst[64];
@@ -55,6 +56,7 @@ unsigned char download_package(const char *id, dl_progress progress)
         if (http_length != 0xFFFFFFFFUL && got != http_length) { dl_error = "fichier incomplet"; return done; }
         if (progress) progress(files[i].name, got);
         if (ln > 4 && (!strcmp(files[i].name + ln - 4, ".tap") || !strcmp(files[i].name + ln - 4, ".TAP")) && !dl_last_tap[0]) strcpy(dl_last_tap, dst);
+        if (ln > 4 && (!strcmp(files[i].name + ln - 4, ".dsk") || !strcmp(files[i].name + ln - 4, ".DSK")) && !dl_last_dsk[0]) strcpy(dl_last_dsk, dst);
         ++done;
     }
     return done;

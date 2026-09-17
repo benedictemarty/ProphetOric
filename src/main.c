@@ -16,7 +16,7 @@
 #include "config.h"
 #include "loci.h"
 
-#define VERSION "0.3.0"
+#define VERSION "0.4.0"
 #define IPP 16                       /* programmes par page (16 lignes de liste) */
 #define ROWS 28
 #define COLS 40
@@ -27,6 +27,7 @@ static unsigned char ncats;
 static struct cli_listing listing;
 static struct cli_info info;
 static char cat_name[24];
+static char search_key[24];           /* "" = liste de catégorie, sinon /search/<clé> */
 static unsigned int page;
 
 /* Écrit une ligne complète (tronquée/complétée à 40 colonnes). Jamais 40 cputc
@@ -159,7 +160,7 @@ static void draw_cats(unsigned char sel)
         l[k++] = ')'; l[k] = 0;
         line(2 + i, l);
     }
-    status("j/k entree=ouvrir c=config q=quitter");
+    status("j/k entree=ouvrir s=chercher c=config q");
 }
 
 static void draw_list(unsigned char sel)
@@ -184,7 +185,9 @@ static unsigned char load_list(void)
 {
     char path[80];
     char d[6]; unsigned char m = 0, k; unsigned int v = page;
-    strcpy(path, "/list/"); strcat(path, cat_name); strcat(path, "?platform=oric&ipp=16&page=");
+    if (search_key[0]) { strcpy(path, "/search/"); strcat(path, search_key); }
+    else { strcpy(path, "/list/"); strcat(path, cat_name); }
+    strcat(path, "?platform=oric&sort=date&ord=desc&ipp=16&page=");   /* comme ProphetGui : les plus récents d'abord */
     k = (unsigned char)strlen(path);
     do { d[m++] = '0' + v % 10; v /= 10; } while (v); while (m) path[k++] = d[--m]; path[k] = 0;
     if (!fetch(path)) return 0;
@@ -211,8 +214,16 @@ static void info_screen(const char *id)
         if (c == 'b') return;
         if (c == 'g') {
             unsigned char n = download_package(id, dl_progress_cb);
-            if (n) { char s[COLS + 1]; strcpy(s, "termine : "); s[10] = '0' + n; s[11] = 0; strcat(s, dl_skipped ? " fich. (zip ignore)" : " fichier(s)"); strcat(s, dl_last_tap[0] ? " l=lancer" : " b=retour"); status(s); }
+            if (n) { char s[COLS + 1]; strcpy(s, "termine : "); s[10] = '0' + n; s[11] = 0; strcat(s, dl_skipped ? " fich. (zip ignore)" : " fichier(s)"); strcat(s, (dl_last_tap[0] || dl_last_dsk[0]) ? " l=lancer" : " b=retour"); status(s); }
             else { char s[COLS + 1]; strcpy(s, "echec : "); strncat(s, dl_error ? dl_error : "?", 30); status(s); }
+        }
+        if (c == 'l' && dl_last_dsk[0]) {
+            /* disquette : montée en lecteur A (0) puis MIA_BOOT (Microdisc + BASIC 1.1) — le
+             * LOCI bascule les ROM et resette l'Oric, qui démarre sur la disquette. */
+            if (loci_mount(0, dl_last_dsk) < 0) { status("montage disquette impossible"); continue; }
+            clrscr(); cputs("Disquette montee en A :\r\n"); cputs(dl_last_dsk); cputs("\r\n\r\nDemarrage...\r\n");
+            loci_boot(LOCI_BOOT_FDC | LOCI_BOOT_B11);
+            status("MIA_BOOT refuse"); continue;
         }
         if (c == 'l' && dl_last_tap[0]) {
             /* montage de la cassette sur le LOCI puis retour au BASIC : CLOAD"" charge (et
@@ -229,6 +240,7 @@ static void list_screen(void)
 {
     unsigned char sel = 0, c;
     page = 0;
+    if (search_key[0]) { strcpy(cat_name, "? "); strncat(cat_name, search_key, 20); }
     if (!load_list()) { cgetc(); return; }
     for (;;) {
         draw_list(sel);
@@ -259,11 +271,19 @@ int main(void)
         draw_cats(sel);
         c = key();
         if (c == 'q') { clrscr(); return 0; }
+        if (c == 's') {                                  /* recherche : /search/<clé> (titre, description, auteur) */
+            title("recherche"); line(2, "mot a chercher (titre, auteur) :"); status("entree = chercher   echap = annuler");
+            search_key[0] = 0;
+            if (edit_field(3, search_key, 22) && search_key[0]) list_screen();
+            search_key[0] = 0;
+            if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; }
+        }
         if (c == 'c') { config_screen(); if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; } }
         if (c == 'j' && sel + 1 < ncats) ++sel;
         if (c == 'k' && sel) --sel;
         if (c == '\n' && ncats) {
             strncpy(cat_name, cats[sel].name, 23); cat_name[23] = 0;
+            search_key[0] = 0;
             list_screen();
             if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; }
         }

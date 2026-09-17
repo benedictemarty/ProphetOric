@@ -24,5 +24,8 @@ int  loci_mkdir(const char *path);
 unsigned int loci_errno(void);
 #define LOCI_MNT_TAP 4                                              /* lecteur cassette (0-3 = disquettes) */
 int  loci_mount(unsigned char drive, const char *path);           /* monte un .tap (4) ou un .dsk (0-3) */
+#define LOCI_BOOT_FDC 0x01                                          /* ROM Microdisc en $A000 (boot disquette) */
+#define LOCI_BOOT_B11 0x04                                          /* BASIC 1.1 (Atmos) */
+int  loci_boot(unsigned char settings);                            /* MIA_BOOT : bascule les ROM et RESET (ne revient pas) */
 
 #endif

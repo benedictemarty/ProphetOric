@@ -15,10 +15,14 @@ unsigned int  http_status;
 unsigned long http_length;
 const char   *http_error;
 
-#define HDR_MAX 512
 #define RX_IDLE_TIMEOUT_MS 8000     /* silence maximal entre deux octets */
 
-static char hdr[HDR_MAX];
+/* Analyse des en-têtes AU FIL DES OCTETS : le 6551 n'a qu'un octet de réception (le
+ * firmware LOCI y ajoute un anneau de 32 octets) et le corps suit les en-têtes sans
+ * pause — analyser un bloc d'en-têtes après coup (100 ms) perdait les 32 premiers
+ * octets du corps à 9600 bauds. Ici chaque octet coûte quelques dizaines de cycles. */
+static char hline[40];               /* ligne courante, en minuscules, tronquée */
+static unsigned char hl, hfirst, hdone, hvalid;
 
 #ifdef TEST_HOST
 static void delay_ms(unsigned int ms) { (void)ms; }
@@ -54,45 +58,51 @@ static unsigned long parse_dec(const char *p)
     return v;
 }
 
-static unsigned char ieq(char a, char b)
+static void hdr_reset(void)
 {
-    if (a >= 'A' && a <= 'Z') a += 32;
-    if (b >= 'A' && b <= 'Z') b += 32;
-    return a == b;
+    hl = 0; hfirst = 1; hdone = 0; hvalid = 0;
+    http_status = 0; http_length = 0xFFFFFFFFUL;
 }
 
-/* Cherche un en-tête (insensible à la casse) en début de ligne ; renvoie sa valeur. */
-static const char *header_value(const char *h, const char *name)
+static void hdr_line_done(void)
 {
-    const char *p = h;
-    unsigned char n = (unsigned char)strlen(name);
-    while (*p) {
-        unsigned char i;
-        for (i = 0; i < n && p[i] && ieq(p[i], name[i]); ++i) ;
-        if (i == n && p[n] == ':') {
-            p += n + 1;
-            while (*p == ' ') ++p;
-            return p;
+    hline[hl] = 0;
+    if (hfirst) {
+        hfirst = 0;
+        if (hline[0] == 'h' && hline[1] == 't' && hline[2] == 't' && hline[3] == 'p' && hline[4] == '/' && hline[8] == ' ') {
+            http_status = (unsigned int)parse_dec(hline + 9);
+            hvalid = http_status >= 100 && http_status <= 599;
+            if (!hvalid) http_status = 0;
         }
-        while (*p && *p != '\n') ++p;
-        if (*p) ++p;
+    } else if (!strncmp(hline, "content-length:", 15)) {
+        const char *v = hline + 15;
+        while (*v == ' ') ++v;
+        http_length = parse_dec(v);
     }
+    hl = 0;
+}
+
+/* un octet d'en-tête ; retour 1 quand la ligne vide (fin des en-têtes) est passée */
+static unsigned char hdr_feed(unsigned char b)
+{
+    if (b == '\r') return 0;
+    if (b == '\n') {
+        if (hl == 0 && !hfirst) { hdone = 1; return 1; }
+        if (hl == 0 && hfirst) return 0;          /* CR LF résiduel avant la ligne de statut */
+        hdr_line_done();
+        return 0;
+    }
+    if (b >= 'A' && b <= 'Z') b += 32;
+    if (hl < sizeof hline - 1) hline[hl++] = (char)b;
     return 0;
 }
 
 unsigned char http_parse_headers(const char *h)
 {
-    const char *v;
-    http_status = 0;
-    http_length = 0xFFFFFFFFUL;
-    if (strncmp(h, "HTTP/1.", 7) != 0) return 0;
-    v = h + 8;
-    while (*v == ' ') ++v;
-    http_status = (unsigned int)parse_dec(v);
-    if (http_status < 100 || http_status > 599) { http_status = 0; return 0; }
-    v = header_value(h, "Content-Length");
-    if (v) http_length = parse_dec(v);
-    return 1;
+    hdr_reset();
+    while (*h && !hdr_feed((unsigned char)*h)) ++h;
+    if (!hdone && hl) hdr_line_done();
+    return hvalid;
 }
 
 /* Envoie une chaîne sans CR final. */
@@ -136,8 +146,7 @@ static void finish(void)
 /* connexion + requête + en-têtes ; retour 1 si les en-têtes sont valides (http_status posé) */
 static unsigned char request(const char *path, const char *range)
 {
-    unsigned int n = 0;
-    unsigned char b, state = 0;
+    unsigned char b;
 
     http_status = 0; http_error = 0;
     if (!connect_modem()) return 0;
@@ -149,32 +158,35 @@ static unsigned char request(const char *path, const char *range)
     tx("\r\n");
     serial_tx_flush();
 
-    /* en-têtes : jusqu'à \r\n\r\n (état 0..4), au plus HDR_MAX-1 octets */
-    while (state < 4) {
+    hdr_reset();
+    for (;;) {
         if (!rx_byte(&b, RX_IDLE_TIMEOUT_MS)) { http_error = "pas de reponse"; at_hangup(); return 0; }
-        if (n == 0 && (b == '\r' || b == '\n')) continue;   /* reliquat du CR LF de CONNECT */
-        if (n < HDR_MAX - 1) hdr[n++] = (char)b;
-        if (b == '\r')      state = (state == 2) ? 3 : 1;
-        else if (b == '\n') state = (state == 1) ? 2 : (state == 3) ? 4 : 0;
-        else                state = 0;
+        if (hdr_feed(b)) break;
     }
-    hdr[n] = 0;
-    if (!http_parse_headers(hdr)) { http_error = "reponse HTTP invalide"; at_hangup(); return 0; }
+    if (!hvalid) { http_error = "reponse HTTP invalide"; at_hangup(); return 0; }
     return 1;
 }
 
 unsigned char http_get(const char *path, const char *range, char *buf, unsigned int max, unsigned int *len)
 {
-    unsigned int n = 0;
-    unsigned char b;
-    unsigned long want;
+    unsigned int n = 0, room = max - 1;
+    unsigned char b, k, chunk;
+    unsigned long remaining;
 
     *len = 0;
     if (!request(path, range)) return 0;
-    want = http_length;
-    while (n < max - 1 && (want == 0xFFFFFFFFUL || n < want)) {
-        if (!rx_byte(&b, RX_IDLE_TIMEOUT_MS)) break;        /* fin par silence (sans Content-Length) */
-        buf[n++] = (char)b;
+    remaining = http_length;
+    /* même discipline que http_get_stream : blocs de ≤ 128 octets en 8 bits (l'anneau de
+     * 32 octets du LOCI débordait à 9600 bauds avec une comparaison 32 bits par octet) */
+    while (remaining && room) {
+        chunk = remaining > 128 ? 128 : (unsigned char)remaining;
+        if (chunk > room) chunk = (unsigned char)room;
+        for (k = 0; k < chunk; ) {
+            if (serial_poll()) { buf[n + k++] = (char)serial_recv(); continue; }
+            if (!rx_byte(&b, RX_IDLE_TIMEOUT_MS)) { chunk = k; remaining = chunk; break; }   /* silence : fin */
+            buf[n + k++] = (char)b;
+        }
+        n += chunk; room -= chunk; remaining -= chunk;
     }
     buf[n] = 0;
     *len = n;
@@ -185,19 +197,25 @@ unsigned char http_get(const char *path, const char *range, char *buf, unsigned 
 unsigned char http_get_stream(const char *path, const char *range, http_sink sink, unsigned long *len)
 {
     static unsigned char block[128];
-    unsigned char b, k = 0;
-    unsigned long n = 0, want;
+    unsigned char b, k, chunk;
+    unsigned long remaining;
 
     *len = 0;
     if (!request(path, range)) return 0;
-    want = http_length;
-    while (want == 0xFFFFFFFFUL || n < want) {
-        if (!rx_byte(&b, RX_IDLE_TIMEOUT_MS)) break;
-        block[k++] = b; ++n;
-        if (k == sizeof block) { if (!sink(block, k)) { http_error = "ecriture impossible"; at_hangup(); return 0; } k = 0; }
+    remaining = http_length;                      /* 0xFFFFFFFF : longueur inconnue, fin par silence */
+    while (remaining) {
+        chunk = remaining > 128 ? 128 : (unsigned char)remaining;
+        /* boucle serrée : pas d'arithmétique 32 bits par octet (cc65 : > 1000 cycles, le
+         * FIFO de 32 octets du LOCI débordait à 9600 bauds) ; chemin lent seulement si vide */
+        for (k = 0; k < chunk; ) {
+            if (serial_poll()) { block[k++] = serial_recv(); continue; }
+            if (!rx_byte(&b, RX_IDLE_TIMEOUT_MS)) { chunk = k; remaining = chunk; break; }   /* silence : fin */
+            block[k++] = b;
+        }
+        if (chunk && !sink(block, chunk)) { http_error = "ecriture impossible"; at_hangup(); return 0; }
+        *len += chunk;
+        remaining -= chunk;
     }
-    if (k && !sink(block, k)) { http_error = "ecriture impossible"; at_hangup(); return 0; }
-    *len = n;
     finish();
     return 1;
 }

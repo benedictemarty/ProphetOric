@@ -112,7 +112,9 @@ _acia6551_init:
         lda     ptr2
         cmp     #ACIA_LOCI_LO
         bne     @cfg_emu
-        lda     #$18            ; LOCI: 1200 bauds, 8N1, horloge interne
+        lda     #$1E            ; ProphetOric : 9600 bauds (OricTel : $18 = 1200), 8N1, horloge interne
+                                ; 19200 : dialogue AT perdu avec le FIFO de 32 ; 1 Mo de .dsk = 18 min (2 h 20 a 1200).
+                                ; Emulation Phosphoric OK ; NON VERIFIE sur LOCI + PicoWiFi reels.
         sta     tmp1
         lda     #$0B            ; LOCI: DTR, IRQ RX off, TIC=10 (pas d'IRQ TX)
         sta     tmp2            ; ($05/$07 avaient TIC=01 = IRQ TX -> tempete IRQ)

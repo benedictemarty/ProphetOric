@@ -18,6 +18,7 @@ typedef int (*stub_fn)(void);
 #define OP_WRITE_XSTACK 0x18
 #define OP_MKDIR 0x83
 #define OP_MOUNT 0x90
+#define OP_MIA_BOOT 0xA0
 
 unsigned char loci_present(void)
 {
@@ -80,4 +81,10 @@ int loci_mount(unsigned char drive, const char *path)
     push_zstring(path);
     REG(AREG) = drive; REG(XREG) = 0;
     return CALL(OP_MOUNT);
+}
+
+int loci_boot(unsigned char settings)
+{
+    REG(AREG) = settings; REG(XREG) = 0;
+    return CALL(OP_MIA_BOOT);
 }
