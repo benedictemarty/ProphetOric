@@ -1,0 +1,28 @@
+ProphetOric 0.1.0                 fiche
+
+Zorg
+par :
+Tansoft
+
+Un jeu Oric de test, avec une
+description assez longue pour verifier
+le retour a la ligne sur quarante
+colonnes.
+
+fichiers : 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+b retour

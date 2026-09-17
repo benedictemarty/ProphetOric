@@ -1,0 +1,28 @@
+ProphetOric 0.1.0            categories
+
+> oric-games (1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+j/k choisir  entree ouvrir  q quitter
