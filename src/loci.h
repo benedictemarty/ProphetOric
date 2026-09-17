@@ -14,6 +14,7 @@
 #define LOCI_O_WRONLY 0x02
 #define LOCI_O_CREAT  0x10
 #define LOCI_O_TRUNC  0x20
+#define LOCI_O_APPEND 0x40
 
 unsigned char loci_present(void);                                  /* signature A9/A2/60 en $03B3/5/7 */
 int  loci_open(const char *path, unsigned char flags);            /* fd ≥ 0, ou < 0 */

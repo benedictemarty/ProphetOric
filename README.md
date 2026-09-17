@@ -6,8 +6,8 @@ Client du dépôt de programmes **Prophet** (`prophet.3617.fr`, serveur
 catalogue Oric (zone réservée, mot de passe), fiche, téléchargement du
 `.tap`/`.dsk` sur le stockage du LOCI, lancement.
 
-**État : sprint 4** (`build/prophet.tap`, ~17 Ko) : catégories / recherche →
-liste paginée → fiche → `g` télécharge sur le LOCI → `l` monte la cassette
+**État : sprint 5** (`build/prophet.tap`, ~18 Ko) : catégories / recherche →
+liste paginée → fiche → `g` télécharge sur le LOCI (tranches Range de 32 Ko, reprise sur coupure) → `l` monte la cassette
 (`CLOAD""`) ou démarre la disquette (`MIA_BOOT`) ; `PROPHET.CFG` et écran de
 configuration (`c`) ; ACIA à **9600 bauds**, vérifié avec l'anneau de 32 octets
 du firmware LOCI ; via le modem PicoWiFi émulé de Phosphoric (vraies sockets). Validation **en émulation uniquement**

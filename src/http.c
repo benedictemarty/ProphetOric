@@ -13,6 +13,7 @@ char http_port[6]  = PROPHET_PORT;
 char http_pass[32] = "";
 unsigned int  http_status;
 unsigned long http_length;
+unsigned long http_range_total;
 const char   *http_error;
 
 #define RX_IDLE_TIMEOUT_MS 8000     /* silence maximal entre deux octets */
@@ -61,7 +62,7 @@ static unsigned long parse_dec(const char *p)
 static void hdr_reset(void)
 {
     hl = 0; hfirst = 1; hdone = 0; hvalid = 0;
-    http_status = 0; http_length = 0xFFFFFFFFUL;
+    http_status = 0; http_length = 0xFFFFFFFFUL; http_range_total = 0xFFFFFFFFUL;
 }
 
 static void hdr_line_done(void)
@@ -78,6 +79,10 @@ static void hdr_line_done(void)
         const char *v = hline + 15;
         while (*v == ' ') ++v;
         http_length = parse_dec(v);
+    } else if (!strncmp(hline, "content-range:", 14)) {          /* bytes a-b/total */
+        const char *v = hline + 14;
+        while (*v && *v != '/') ++v;
+        if (*v == '/') http_range_total = parse_dec(v + 1);
     }
     hl = 0;
 }

@@ -1,5 +1,25 @@
 # Changelog — ProphetOric
 
+## [0.5.0] — 2026-09-17 — Sprint 5 : tranches Range, reprise, disquette vérifiée
+### Ajouté
+- **Téléchargement par tranches `Range: bytes=a-b` de 32 Ko** (réponse 206,
+  taille totale lue dans `Content-Range`), une connexion par tranche ;
+  **reprise en ajout** (`O_APPEND`) sur coupure, 3 essais par tranche ; un
+  serveur sans Range (200) est pris d'un trait. Test `resume` : un relais
+  (`tests/cut_proxy.py`) coupe la première réponse après 5 000 octets → le
+  fichier de 20 Ko arrive identique.
+- Scénario long `dsk_boot` **vérifié** : 1 Mo en 36 tranches, disquette
+  montée en A, `MIA_BOOT` → Sedoric démarre (le flash du LOCI doit contenir
+  `microdis.rom`, pré-semé dans le test comme sur le vrai LOCI ; Phosphoric ne
+  la résout pas depuis `roms/`, contrairement à `basic11b.rom`).
+- `tests/run.sh` : `ONLY=<nom>` couvre aussi les contrôles annexes ; `SEED=`
+  pour pré-semer le flash.
+### Constaté (émulateur)
+- Le backend `picowifi` de Phosphoric n'a **pas de contrôle de flux** : au-delà
+  de son anneau de 64 Ko les octets sont jetés en silence (un `.dsk` de 1 Mo
+  s'arrêtait à 69 Ko). Les tranches de 32 Ko contournent ; signalement
+  `docs/MESSAGE-phosphoric-picowifi-flux.md` (copie dans `~/Oric1/`).
+
 ## [0.4.0] — 2026-09-17 — Sprint 4 : disquettes, 9600 bauds, recherche
 ### Ajouté
 - **Lancer une disquette** (`l` après un `.dsk`) : montage en lecteur A (op

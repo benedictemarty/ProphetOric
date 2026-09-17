@@ -1,0 +1,28 @@
+
+
+            SEDORIC DOS V4.0
+            SEDORIC DOS V4.0
+
+
+   0 : Choix de la langue
+
+   1 : Convert disque d'un ancien DOS
+
+   2 : Genere la cartographie du disque
+
+   3 : ROM ATMOS dans la RAM overlay
+
+   4 : ROM ORIC1 dans la RAM overlay
+
+   5 : Trier le repertoire du disque
+
+   6 : Version du DOS
+
+   7 : Information (SEDORIC4.FIX)  FRA
+
+   8 : MOMASM Moniteur Desassembleur
+
+
+  Pressez une autre touche pour le BASIC
+  Faites votre choix :   .
+

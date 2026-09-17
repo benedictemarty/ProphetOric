@@ -17,6 +17,7 @@ extern char http_port[6];       /* port décimal */
 extern char http_pass[32];      /* mot de passe des zones réservées ("" = aucun) */
 extern unsigned int http_status;      /* code de la dernière réponse (0 = pas de réponse) */
 extern unsigned long http_length;     /* Content-Length annoncé (0xFFFFFFFF = absent) */
+extern unsigned long http_range_total; /* taille totale d'après Content-Range: bytes a-b/total (0xFFFFFFFF = absent) */
 extern const char *http_error;        /* texte de la dernière erreur, ou NUL */
 
 /* Analyse un bloc d'en-têtes HTTP (terminé par \r\n\r\n ou NUL) : statut,
