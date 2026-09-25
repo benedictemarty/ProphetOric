@@ -13,3 +13,4 @@ memory.dump
 tests/repo/oric-utils/
 flash/
 docs/img/*.avi
+ROADMAP.md
