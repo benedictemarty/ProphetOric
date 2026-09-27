@@ -36,3 +36,7 @@ Voir **`docs/MANUEL.md`** (manuel utilisateur, captures, vidéo `docs/img/demo.m
 
 Dépôts : https://framagit.org/benedictemarty/prophetoric ·
 https://github.com/benedictemarty/ProphetOric
+
+## Avertissement
+
+⚠️ Avertissement : ce programme est un programme généré par Claude Code sous la supervision d'un être humain : il a été utilisé pour améliorer, développer, rendre compatible ou traduire ce logiciel.
