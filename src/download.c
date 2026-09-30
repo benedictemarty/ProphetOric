@@ -9,6 +9,7 @@
 #include "cli.h"
 #include "loci.h"
 #include "crc32.h"
+#include "himem.h"
 
 #define DL_CHUNK 32768UL          /* taille d'une tranche Range */
 #define MARK_DIR ".prophet"
@@ -26,7 +27,7 @@ struct cli_file dl_files[CLI_MAX_FILES];
 char *dl_crc[CLI_MAX_FILES];
 char *dl_req[DL_MAX_REQ];
 static int cur_fd = -1;
-static char list[512];
+#define list FILES_BUF                /* réponse de /files/<id>, en $B200 (himem.h) */
 static char crcbuf[CLI_MAX_FILES * 10 + 8];
 static char reqbuf[96];
 static char mark[300];
@@ -67,7 +68,7 @@ unsigned char dl_fetch_meta(const char *id)
     char path[64];
     dl_error = 0; dl_nfiles = dl_ncrc = dl_nreq = 0;
     strcpy(path, "/files/"); strncat(path, id, 40);
-    if (!http_get(path, 0, list, sizeof list, &len)) { dl_error = http_error; return 0; }
+    if (!http_get(path, 0, list, FILES_SIZE, &len)) { dl_error = http_error; return 0; }
     if (http_status != 200) { dl_error = T(S_E_NOFILES); return 0; }
     if (!cli_parse_files(list, dl_files, CLI_MAX_FILES, &dl_nfiles) || dl_nfiles == 0) { dl_error = T(S_E_BADLIST); return 0; }
     /* empreintes : une par fichier, sinon pas de vérification (serveur < 0.13.1 : 404) */

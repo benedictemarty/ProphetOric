@@ -22,8 +22,7 @@ const char *T(unsigned char id) { return lng_ok ? lng[id] : fr_tab[id]; }
 #ifdef TEST_HOST
 unsigned char lang_set(const char *code) { lng_ok = 0; strcpy(lang_code, "fr"); return code[0] == 'f'; }
 #else
-#define LNG_BUF ((char *)0xA000)
-#define LNG_MAX 0x1400                      /* $A000-$B3FF : sous les jeux de caractères $B400 */
+#include "himem.h"                          /* LNG_BUF / LNG_MAX : $A000-$A9FF */
 
 unsigned char lang_set(const char *code)
 {

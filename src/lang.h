@@ -1,7 +1,7 @@
 /*
  * lang.h — textes de l'interface (src/strings.def) : T(S_xxx). Français compilé ;
  * anglais / espagnol lus sur le LOCI (EN.LNG, ES.LNG, générés par tools/mklng.c) et
- * gardés en $A000-$B3FF, zone HIRES libre en mode TEXT (la RAM du programme est pleine).
+ * gardés en $A000-$A9FF (himem.h : zone HIRES libre en mode TEXT, la RAM du programme est pleine).
  * Fichier .LNG : enregistrements terminés par NUL, le premier = "PLNG <version>",
  * puis S_COUNT textes dans l'ordre de strings.def ; autre version ou compte faux → refusé.
  */

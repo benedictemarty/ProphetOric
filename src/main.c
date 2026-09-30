@@ -17,6 +17,7 @@
 #include "loci.h"
 #include "version.h"
 #include "lang.h"
+#include "himem.h"
 
 #define ROWS 28
 #define COLS 40
@@ -24,7 +25,7 @@
 #define MAX_CATS 16
 #define MAX_DEV 16
 
-static char body[2048];              /* réponse courante (parsée en place) */
+#define body BODY_BUF                 /* réponse courante (parsée en place), en $AA00 (himem.h) */
 static struct cli_cat cats[MAX_CATS];
 static unsigned char ncats;
 static char cat_names[MAX_CATS][18];  /* copies : cats[].name pointe dans body, écrasé à chaque requête */
@@ -97,7 +98,7 @@ static unsigned char fetch(const char *path)
 {
     unsigned int len;
     status(T(S_CONNECTING));
-    if (!http_get(path, 0, body, sizeof body, &len)) { status(http_error ? http_error : T(S_ERR_NET)); return 0; }
+    if (!http_get(path, 0, body, BODY_SIZE, &len)) { status(http_error ? http_error : T(S_ERR_NET)); return 0; }
     if (http_status != 200) {
         char m[24]; unsigned int v = http_status; unsigned char k;
         strcpy(m, http_status == 404 ? T(S_E404) : http_status == 429 ? T(S_E429) : T(S_ESRV));

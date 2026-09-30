@@ -5,6 +5,7 @@
 #include <string.h>
 #include "../../src/lang.h"
 #include "../../src/version.h"
+#include "../../src/himem.h"
 
 static int fails;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); fails++; } } while (0)
@@ -35,7 +36,7 @@ int main(int argc, char **argv)
         static char buf[8192]; FILE *f = fopen(argv[l], "rb"); size_t n; unsigned int k, c = 0;
         CHECK(f != 0); if (!f) continue;
         n = fread(buf, 1, sizeof buf, f); fclose(f);
-        CHECK(n < 0x1400 && n > 0 && buf[n - 1] == 0 && !strcmp(buf, "PLNG " VERSION));
+        CHECK(n < LNG_MAX && n > 0 && buf[n - 1] == 0 && !strcmp(buf, "PLNG " VERSION));
         for (k = (unsigned int)strlen(buf) + 1; k < n; k += (unsigned int)strlen(buf + k) + 1) {
             CHECK(!strcmp(buf + k, tab[c].t[strstr(argv[l], "ES") ? 2 : 1])); ++c;
         }

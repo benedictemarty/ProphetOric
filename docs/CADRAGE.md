@@ -63,8 +63,8 @@ src/loci.c         MIA : open/write_xstack/close/mkdir/readdir, montage TAP
 src/ui.c           TEXT 40×28 : catégories, liste paginée, fiche, téléchargement
 src/config.c       PROPHET.CFG sur le LOCI (hôte / port / dossier / mot de passe)
 ```
-- Mémoire : programme sous `$9800` (HIRES non utilisé au début), tampon de
-  réception 4 Ko, liste `ipp=16`.
+- Mémoire : programme sous `$9800` ; la zone HIRES `$A000-$B3FF`, libre en mode TEXT,
+  porte le fichier de langue, la réponse HTTP (2 Ko) et la liste `/files` (`src/himem.h`, 0.9.1).
 - SHA‑256 : le 6502 NMOS sans `phx`/`stz`… — l'asm 65C02 de ProphetGui n'est
   pas portable tel quel. **Décision 0.7.0** : CRC‑32 (`/crc32/<id>`, comme
   ProphetGui depuis 0.10), boucle NMOS `src/crc32_asm.s` (~40 cycles/octet)
