@@ -15,8 +15,8 @@
 #include "download.h"
 #include "config.h"
 #include "loci.h"
+#include "version.h"
 
-#define VERSION "0.6.2"
 #define IPP 16                       /* programmes par page (16 lignes de liste) */
 #define ROWS 28
 #define COLS 40
@@ -54,11 +54,13 @@ static void title(const char *t)
 
 static void status(const char *s) { line(ROWS - 1, s); }
 
-/* affiche un texte avec retour à la ligne aux mots, depuis la ligne y ; renvoie la ligne suivante */
+/* affiche un texte avec retour à la ligne aux mots, depuis la ligne y et avant la ligne
+ * wrap_end ; renvoie la ligne suivante */
+static unsigned char wrap_end = ROWS - 1;
 static unsigned char wrap(unsigned char y, const char *s)
 {
     char buf[COLS + 1];
-    while (*s && y < ROWS - 1) {
+    while (*s && y < wrap_end) {
         unsigned char n = 0, cut = 0;
         while (s[n] && s[n] != '\n' && n < COLS) { if (s[n] == ' ') cut = n; ++n; }
         if (n == COLS && s[n] && s[n] != ' ' && cut) n = cut;
@@ -145,7 +147,7 @@ static void dir_list(const char *path, unsigned char volumes)
             if (name[1] != ':' || strstr(name, "CDC")) continue;
             strncpy(dir_names[dir_count], name, 25); dir_names[dir_count][25] = 0;
         } else {
-            if (!is_dir) continue;
+            if (!is_dir || name[0] == '.') continue;          /* .prophet : marqueurs de téléchargement */
             strncpy(dir_names[dir_count], name, 25); dir_names[dir_count][25] = 0;
         }
         ++dir_count;
@@ -267,14 +269,63 @@ static void spinner(unsigned long received)
     }
 }
 
+/* décimal non signé 16 bits à la fin de d (terminé par NUL) */
+static void cat_uint(char *d, unsigned int v)
+{
+    char t[6]; unsigned char m = 0;
+    d += strlen(d);
+    do { t[m++] = '0' + (unsigned char)(v % 10); v /= 10; } while (v);
+    while (m) *d++ = t[--m];
+    *d = 0;
+}
+
+/* Appelé entre deux tranches (connexion close : les divisions 32 bits ne coûtent plus rien
+ * à la réception). Ligne ROWS-3 : « fichier i/n nom » ; ligne ROWS-2 : barre de progression ;
+ * statut : « telechargement nom » (la roue et les Ko du spinner s'y ajoutent pendant la
+ * réception), « recu x / y Ko », ou « verification CRC-32 ». */
 static void dl_progress_cb(const char *name, unsigned long bytes)
 {
-    char s[COLS + 1]; unsigned char k; unsigned long v = bytes; char d[12]; unsigned char m = 0;
-    strcpy(s, bytes ? "recu " : "telechargement "); strncat(s, name, 16);
-    if (bytes) { k = (unsigned char)strlen(s); s[k++] = ' ';
-        do { d[m++] = '0' + (unsigned char)(v % 10); v /= 10; } while (v); while (m) s[k++] = d[--m];
-        s[k] = 0; strcat(s, " octets"); }
+    char s[COLS + 1];
+    strcpy(s, "fichier "); cat_uint(s, dl_index + 1); strcat(s, "/"); cat_uint(s, dl_nfiles);
+    strcat(s, " : "); strncat(s, name, COLS - 16); line(ROWS - 3, s);
+    if (dl_total != 0xFFFFFFFFUL && dl_total) {                 /* [#####.....] 30 cases */
+        unsigned char k, f = (unsigned char)(bytes >= dl_total ? 30 : bytes * 30 / dl_total);
+        s[0] = '[';
+        for (k = 0; k < 30; ++k) s[1 + k] = k < f ? '#' : '.';
+        s[31] = ']'; s[32] = ' '; s[33] = 0;
+        cat_uint(s, (unsigned int)(bytes >= dl_total ? 100 : bytes * 100 / dl_total)); strcat(s, "%");
+        line(ROWS - 2, s);
+    } else line(ROWS - 2, "");
+    if (dl_phase) { strcpy(s, "verification CRC-32 "); strncat(s, name, 18); }
+    else if (!bytes) { strcpy(s, "telechargement "); strncat(s, name, 16); }
+    else {
+        strcpy(s, "recu "); cat_uint(s, (unsigned int)(bytes >> 10));
+        if (dl_total != 0xFFFFFFFFUL) { strcat(s, " / "); cat_uint(s, (unsigned int)((dl_total + 1023) >> 10)); }
+        strcat(s, " Ko");
+    }
     status(s);
+}
+
+/* écran d'aide (?) */
+static void help_screen(void)
+{
+    title("aide");
+    wrap(2, "j/k ou fleches : choisir\n"
+            "entree : ouvrir     b : retour\n"
+            "n/p : page suivante / precedente\n"
+            "s : chercher (titre, auteur)\n"
+            "c : configuration (serveur, dossier, mot de passe)\n"
+            "q : retour au BASIC\n"
+            "\n"
+            "Fiche : g telecharge sur le LOCI (verifie par CRC-32), "
+            "l lance : cassette montee + CLOAD\"\" ou disquette + demarrage Microdisc.\n"
+            "\n"
+            "Reglages : PROPHET.CFG sur le LOCI. "
+            "Marqueurs de telechargement : .prophet/ dans le dossier.\n"
+            "\n"
+            "ProphetOric " VERSION " - prophet.3617.fr");
+    status("une touche = retour");
+    cgetc();
 }
 
 static void draw_cats(unsigned char sel)
@@ -293,7 +344,7 @@ static void draw_cats(unsigned char sel)
         l[k++] = ')'; l[k] = 0;
         line(2 + i, l);
     }
-    status("j/k entree=ouvrir s=chercher c=config q");
+    status("j/k entree=ouvrir s=chercher c=config ?");
 }
 
 static void draw_list(unsigned char sel)
@@ -311,7 +362,7 @@ static void draw_list(unsigned char sel)
       do { d[m++] = '0' + v % 10; v /= 10; } while (v); while (m) s[k++] = d[--m];
       s[k++] = '/'; v = listing.pages ? listing.pages : 1; m = 0;
       do { d[m++] = '0' + v % 10; v /= 10; } while (v); while (m) s[k++] = d[--m];
-      strcpy(s + k, " j/k n/p entree=fiche b=retour"); status(s); }
+      strcpy(s + k, " j/k n/p entree=fiche b ?"); status(s); }
 }
 
 static unsigned char load_list(void)
@@ -328,30 +379,71 @@ static unsigned char load_list(void)
     return 1;
 }
 
+/* bas de fiche : état du paquet (ligne ROWS-4) et touches */
+static void info_keys(unsigned char installed)
+{
+    line(ROWS - 4, installed ? "deja telecharge (identique)" : "");
+    if (!dl_nfiles) status("b retour");
+    else if (installed) status("l lancer   g retelecharger   b retour");
+    else status("g telecharger sur le LOCI   b retour");
+}
+
 static void info_screen(const char *id)
 {
     char path[80];
-    unsigned char y;
+    unsigned char y, i, installed;
     strcpy(path, "/app/"); strcat(path, id);
     if (!fetch(path)) { cgetc(); return; }
     if (!cli_parse_info(body, &info)) { status("reponse inattendue"); cgetc(); return; }
+    status("connexion...");
+    if (!dl_fetch_meta(id)) dl_nfiles = 0;                       /* fiche affichée quand même */
+    dl_last_tap[0] = dl_last_dsk[0] = 0;
+    installed = dl_nfiles && dl_installed(id);
     title("fiche");
-    y = wrap(2, info.title);
-    if (info.author) { line(y, "par :"); y = wrap(y + 1, info.author); }
+    wrap_end = 5; y = wrap(2, info.title);
+    if (info.author) { char s[COLS + 1]; strcpy(s, "par : "); strncat(s, info.author, COLS - 6); line(y++, s); }
     ++y;
+    wrap_end = dl_nreq ? ROWS - 10 : ROWS - 8;
     if (info.description) y = wrap(y, info.description);
-    { char s[COLS + 1]; strcpy(s, "fichiers : "); s[11] = '0' + (info.files % 10); s[12] = 0; if (y < ROWS - 2) line(y + 1, s); }
-    status("g telecharger sur le LOCI   b retour");
+    wrap_end = ROWS - 1;
+    /* fichiers (2 lignes au plus) puis composants minimums (informatif, rien n'est vérifié) */
+    {
+        char s[COLS * 2 + 1];
+        unsigned char r = dl_nreq ? ROWS - 9 : ROWS - 7;
+        strcpy(s, "fichiers ("); cat_uint(s, dl_nfiles ? dl_nfiles : info.files); strcat(s, ") : ");
+        for (i = 0; i < dl_nfiles && strlen(s) + strlen(dl_files[i].name) + 2 < sizeof s; ++i) {
+            if (i) strcat(s, ", ");
+            strcat(s, dl_files[i].name);
+        }
+        if (i < dl_nfiles) strcat(s, "...");
+        wrap_end = r + 2; wrap(r, s); wrap_end = ROWS - 1;
+        if (dl_nreq) {
+            strcpy(s, "! peut ne pas fonctionner sans : ");
+            for (i = 0; i < dl_nreq && strlen(s) + strlen(dl_req[i]) + 2 < sizeof s; ++i) { if (i) strcat(s, ", "); strcat(s, dl_req[i]); }
+            wrap_end = ROWS - 5; wrap(ROWS - 7, s); wrap_end = ROWS - 1;
+        }
+    }
+    if (!dl_nfiles && dl_error) { char s[COLS + 1]; strcpy(s, "fichiers : "); strncat(s, dl_error, COLS - 11); line(ROWS - 3, s); }
+    info_keys(installed);
     for (;;) {
         unsigned char c = key();
         if (c == 'b') return;
-        if (c == 'g') {
+        if (c == '?' || c == 'h') { help_screen(); return; }
+        if (c == 'g' && dl_nfiles) {
             unsigned char n;
+            line(ROWS - 4, "");
             http_tick = spinner;
             n = download_package(id, dl_progress_cb);
             http_tick = 0;
-            if (n) { char s[COLS + 1]; strcpy(s, "termine : "); s[10] = '0' + n; s[11] = 0; strcat(s, dl_skipped ? " fich. (zip ignore)" : " fichier(s)"); strcat(s, (dl_last_tap[0] || dl_last_dsk[0]) ? " l=lancer" : " b=retour"); status(s); }
-            else { char s[COLS + 1]; strcpy(s, "echec : "); strncat(s, dl_error ? dl_error : "?", 30); status(s); }
+            if (n && !dl_error) {
+                char s[COLS + 1]; strcpy(s, "termine : "); cat_uint(s, n); strcat(s, dl_skipped ? " fich. (zip ignore)" : " fichier(s)");
+                strcat(s, (dl_last_tap[0] || dl_last_dsk[0]) ? " l=lancer" : " b=retour");
+                line(ROWS - 3, dl_verified ? "OK : empreintes CRC-32 verifiees" : "OK (serveur sans empreintes : non verifie)");
+                status(s);
+            } else {
+                char s[COLS + 1]; strcpy(s, "echec : "); strncat(s, dl_error ? dl_error : "?", 31);
+                line(ROWS - 3, s); status("g reessayer   b retour");
+            }
         }
         if (c == 'l' && dl_last_dsk[0]) {
             /* disquette : montée en lecteur A (0) puis MIA_BOOT (Microdisc + BASIC 1.1) — le
@@ -382,6 +474,7 @@ static void list_screen(void)
         draw_list(sel);
         c = key();
         if (c == 'b' || c == 'q') return;
+        if (c == '?' || c == 'h') help_screen();
         if (c == 'j' && sel + 1 < listing.count) ++sel;
         if (c == 'k' && sel) --sel;
         if (c == 'n' && page + 1 < listing.pages) { ++page; sel = 0; if (!load_list()) { cgetc(); return; } }
@@ -408,6 +501,14 @@ int main(void)
         status("une touche = retour au BASIC");
         cgetc(); clrscr(); return 1;
     }
+    if (!loci_present()) {                           /* ACIA sans l'API MIA ($03AF) : catalogue seulement */
+        title("LOCI absent");
+        { unsigned char y = wrap(3, "Interface serie trouvee, mais pas l'API du LOCI ($03AF) : pas de stockage.");
+          y = wrap(y + 1, "Le catalogue reste consultable ; telechargement, lancement et PROPHET.CFG sont impossibles.");
+          wrap(y + 1, "Verifier la cartouche LOCI."); }
+        status("une touche = continuer");
+        cgetc();
+    }
     serial_init(ACIA_BASE_LOCI);
     config_load();                                   /* PROPHET.CFG sur le LOCI, sinon valeurs compilées */
     if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; }
@@ -415,6 +516,7 @@ int main(void)
         draw_cats(sel);
         c = key();
         if (c == 'q') { clrscr(); return 0; }
+        if (c == '?' || c == 'h') help_screen();
         if (c == 's') {                                  /* recherche : /search/<clé> (titre, description, auteur) */
             title("recherche"); line(2, "mot a chercher (titre, auteur) :"); status("entree = chercher   echap = annuler");
             search_key[0] = 0;

@@ -1,4 +1,4 @@
-ProphetOric 0.6.2            categories
+ProphetOric 0.7.0            categories
 
 > oric-games (2)
 
@@ -25,4 +25,4 @@ ProphetOric 0.6.2            categories
 
 
 
-j/k entree=ouvrir s=chercher c=config q
+j/k entree=ouvrir s=chercher c=config ?

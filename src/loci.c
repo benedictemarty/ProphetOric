@@ -1,6 +1,7 @@
 /* loci.c — voir loci.h. Registres MIA accédés en C (volatile) ; l'appel se
  * fait par le stub 6502 que le LOCI expose en $03B0 (clv / bvc / lda / ldx / rts). */
 #include "loci.h"
+#include "crc32.h"
 
 #define REG(a) (*(volatile unsigned char *)(a))
 #define XSTACK 0x03AC
@@ -16,6 +17,7 @@ typedef int (*stub_fn)(void);
 #define OP_CLOSE 0x15
 #define OP_READ_XSTACK 0x16
 #define OP_WRITE_XSTACK 0x18
+#define OP_LSEEK 0x1A
 #define OP_OPENDIR 0x80
 #define OP_CLOSEDIR 0x81
 #define OP_READDIR 0x82
@@ -77,6 +79,31 @@ int loci_read(unsigned char fd, unsigned char *buf, unsigned char n)
     r = CALL(OP_READ_XSTACK);
     if (r <= 0) return r;
     for (i = 0; i < (unsigned char)r; ++i) buf[i] = REG(XSTACK);   /* lire $03AC dépile dans l'ordre */
+    return r;
+}
+
+/* comme loci_read, mais les octets dépilés passent directement dans le CRC-32 (crc32_asm.s) */
+int loci_read_crc(unsigned char fd, unsigned char n)
+{
+    int r;
+    REG(XSTACK) = 0;
+    REG(XSTACK) = n;
+    REG(AREG) = fd; REG(XREG) = 0;
+    r = CALL(OP_READ_XSTACK);
+    if (r > 0) crc32_xstack((unsigned char)r);
+    return r;
+}
+
+/* LSEEK (convention du firmware, relevée dans ~/Oric1/src/io/loci_fs.c) : décalage int32
+ * sous le whence, petit-boutiste dans la pile → poussé octet fort d'abord ; whence 2 = SEEK_SET */
+long loci_seek_set(unsigned char fd, unsigned long off)
+{
+    int r;
+    REG(XSTACK) = (unsigned char)(off >> 24); REG(XSTACK) = (unsigned char)(off >> 16);
+    REG(XSTACK) = (unsigned char)(off >> 8);  REG(XSTACK) = (unsigned char)off;
+    REG(XSTACK) = 2;
+    REG(AREG) = fd; REG(XREG) = 0;
+    r = CALL(OP_LSEEK);
     return r;
 }
 

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Relais TCP qui coupe la PREMIÈRE réponse d'un fichier (/files/<id>/<n>) après
-CUT octets de corps, puis laisse tout passer : simule une coupure de connexion pour
-tester la reprise par Range. Usage : cut_proxy.py <port_ecoute> <port_prophetd> <CUT>"""
+"""Relais TCP sur la PREMIÈRE réponse d'un fichier (/files/<id>/<n>, avec ou sans Range),
+puis tout passe tel quel. Mode `cut` (défaut) : coupe après CUT octets de corps (reprise
+par Range). Mode `flip` : inverse l'octet de corps n° CUT et transmet le reste (détection
+par CRC-32). Usage : cut_proxy.py <port_ecoute> <port_prophetd> <CUT> [cut|flip]"""
 import socket, sys, threading
 LISTEN, TARGET, CUT = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
+MODE = sys.argv[4] if len(sys.argv) > 4 else "cut"
 cut_done = False
 
 def handle(c):
@@ -15,7 +17,7 @@ def handle(c):
         req += d
     first = req.split(b"\r\n", 1)[0]
     s = socket.create_connection(("127.0.0.1", TARGET)); s.sendall(req)
-    cut = (not cut_done) and b" /files/" in first and first.split(b" ")[1].count(b"/") == 3 and b"Range:" not in req
+    cut = (not cut_done) and b" /files/" in first and first.split(b" ")[1].count(b"/") == 3
     if cut: cut_done = True
     sent_body = 0; hdr_done = False; buf = b""
     while True:
@@ -27,6 +29,10 @@ def handle(c):
             i = buf.find(b"\r\n\r\n")
             if i < 0: continue
             hdr_done = True; c.sendall(buf[:i + 4]); buf = buf[i + 4:]
+        if MODE == "flip":
+            if sent_body <= CUT < sent_body + len(buf):
+                k = CUT - sent_body; buf = buf[:k] + bytes([buf[k] ^ 0xFF]) + buf[k + 1:]
+            c.sendall(buf); sent_body += len(buf); buf = b""; continue
         room = CUT - sent_body
         if room <= 0: break
         c.sendall(buf[:room]); sent_body += min(room, len(buf)); buf = b""

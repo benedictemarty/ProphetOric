@@ -42,6 +42,13 @@ scenario fiche  "12000000:\n\p5\n"  26000000   # fiche Zorg : auteur, descriptio
 scenario dl     "12000000:\n\p5\n\p5g" 60000000   # zorg.tap = 20 Ko à motif (9600 bauds ≈ 21 s)   # \pN : un seul chiffre
 if ! want dl; then :; elif cmp -s "$OUT/flash_dl/zorg.tap" tests/repo/oric-games/zorg/zorg.tap; then echo "PASS dl_file (zorg.tap identique sur le LOCI)"
 else echo "FAIL dl_file"; ls -l "$OUT/flash_dl"; fail=1; fi
+# marqueur « déjà téléchargé » : empreinte du serveur (/crc32/zorg) et fichier à lancer
+if ! want dl; then :; elif [ "$(cat "$OUT/flash_dl/.prophet/zorg.crc" 2>/dev/null)" = "$(printf 'C:%s\nT:zorg.tap\nD:' "$(curl -s -H 'ResponseFormat: cli' http://127.0.0.1:18994/crc32/zorg | tr -d '\r\n')")" ]; then echo "PASS dl_mark (.prophet/zorg.crc = empreinte du serveur, zorg.tap)"
+else echo "FAIL dl_mark"; cat -A "$OUT/flash_dl/.prophet/zorg.crc" 2>/dev/null; fail=1; fi
+# fiche d'un paquet déjà téléchargé : dl puis retour et réouverture → « deja telecharge (identique) », l direct
+scenario installed "12000000:\n\p5\n\p5g\p9\p9\p9\p9b\p5\n" 80000000
+# composants minimums (/requires/hello : loci>=0.3.1, picowifi) : avertissement sur la fiche
+scenario fiche_req "12000000:shello\n\p5\n" 32000000
 # indicateur d'activité : capture pendant le téléchargement (≈ 10 s après g) : roue -\|/ et compteur Ko en bas à droite
 NOREF=1 scenario spin   "12000000:\n\p5\n\p5g" 33000000
 if ! want spin; then :; elif tail -1 "$OUT/spin.txt" | grep -qE "^telechargement zorg.tap +[0-9]+ K[-\\|/]$"; then echo "PASS spin_wheel (indicateur -\\|/ et Ko pendant le telechargement)"
@@ -83,16 +90,23 @@ rm -rf "$OUT/usb1"; mkdir -p "$OUT/usb1"
 EXTRA="--serial-buffer 4096 --loci-usb $OUT/usb1" scenario volumes "12000000:c\n\n\nj\nnjeux\n\n sesame-test\nb\p5\n\p5\n\p5g" 60000000
 if ! want volumes; then :; elif sed -n 3p "$OUT/flash_volumes/PROPHET.CFG" 2>/dev/null | grep -qE "^[1-4]:jeux$" && cmp -s "$OUT/usb1/jeux/dune.tap" tests/repo/oric-games/dune/dune.tap; then echo "PASS volumes (volume USB choisi dans l'explorateur, fichier sur la cle USB, config sur le flash)"
 else echo "FAIL volumes"; cat "$OUT/flash_volumes/PROPHET.CFG" 2>/dev/null; ls -R "$OUT/usb1" | head -5; grep -v "^$" "$OUT/volumes.txt" | tail -3; fail=1; fi
-# reprise : un relais coupe la première réponse de fichier après 5 000 octets → le client
-# reprend par Range: bytes=5000- en ajout ; zorg.tap (20 Ko) doit être identique
+# reprise : un relais coupe la première réponse de fichier après 5 000 octets (le modem émet NO CARRIER) → le client
+# l'écarte, se repositionne (LSEEK) et reprend par Range: bytes=5000- ; zorg.tap (20 Ko) doit être identique
 kill $PD 2>/dev/null; sleep 0.3
 sed 's/^port: 18994/port: 18993/' "$OUT/prophet.yml" > "$OUT/prophet93.yml"
 PROPHET_PASSWORD=sesame-test "$PROPHETD" -config "$OUT/prophet93.yml" >>"$OUT/prophetd.log" 2>&1 & PD=$!
 python3 tests/cut_proxy.py 18994 18993 5000 >"$OUT/cut_proxy.log" 2>&1 & CP=$!
 for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:18994/cat && break; sleep 0.1; done
-scenario resume "12000000:\n\p5\n\p5g" 70000000
-if ! want resume; then :; elif cmp -s "$OUT/flash_resume/zorg.tap" tests/repo/oric-games/zorg/zorg.tap && grep -q "termine : 1 fichier" "$OUT/resume.txt"; then echo "PASS resume (coupure a 5 000 octets, reprise Range en ajout, fichier identique)"
+scenario resume "12000000:\n\p5\n\p5g" 110000000
+if ! want resume; then :; elif cmp -s "$OUT/flash_resume/zorg.tap" tests/repo/oric-games/zorg/zorg.tap && grep -q "termine : 1 fichier" "$OUT/resume.txt"; then echo "PASS resume (coupure a 5 000 octets, NO CARRIER ecarte, reprise Range + LSEEK, fichier identique)"
 else echo "FAIL resume"; tail -1 "$OUT/resume.txt"; ls -l "$OUT/flash_resume"; fail=1; fi
+kill $CP 2>/dev/null; sleep 0.3
+# empreinte : le relais inverse l'octet 5 000 de la première réponse → CRC-32 différent, détecté
+python3 tests/cut_proxy.py 18994 18993 5000 flip >"$OUT/flip_proxy.log" 2>&1 & CP=$!
+for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:18994/cat && break; sleep 0.1; done
+scenario crcbad "12000000:\n\p5\n\p5g" 70000000
+if ! want crcbad; then :; elif grep -q "EMPREINTE DIFFERENTE" "$OUT/crcbad.txt" && [ ! -e "$OUT/flash_crcbad/.prophet/zorg.crc" ]; then echo "PASS crcbad (octet altere detecte par CRC-32, pas de marqueur)"
+else echo "FAIL crcbad"; tail -3 "$OUT/crcbad.txt"; fail=1; fi
 kill $CP 2>/dev/null; kill $PD 2>/dev/null; sleep 0.3
 PROPHET_PASSWORD=sesame-test "$PROPHETD" -config "$OUT/prophet.yml" >>"$OUT/prophetd.log" 2>&1 & PD=$!
 for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:18994/cat && break; sleep 0.1; done
@@ -106,6 +120,13 @@ if want noacia; then
     if [ "$mode" = ref ]; then cp "$OUT/noacia.txt" "$REF/noacia.txt"; echo "REF  noacia"; cat "$OUT/noacia.txt"
     elif cmp -s "$OUT/noacia.txt" "$REF/noacia.txt"; then echo "PASS noacia (sans interface serie : materiel requis explique)"
     else echo "FAIL noacia"; diff "$REF/noacia.txt" "$OUT/noacia.txt" | head -20; fail=1; fi
+fi
+# ACIA en $0380 mais sans l'API MIA du LOCI : avertissement, puis le catalogue quand même
+if want noloci; then
+    "$EMU" -r "$ROM" -t "$TAP" -f --serial picowifi:Test --acia-addr 0380 --headless --realtime --cycles 12100000 --screenshot-text-at "12000000:$OUT/noloci.txt" >"$OUT/noloci.log" 2>&1
+    if [ "$mode" = ref ]; then cp "$OUT/noloci.txt" "$REF/noloci.txt"; echo "REF  noloci"; cat "$OUT/noloci.txt"
+    elif cmp -s "$OUT/noloci.txt" "$REF/noloci.txt"; then echo "PASS noloci (ACIA sans LOCI : stockage impossible explique)"
+    else echo "FAIL noloci"; diff "$REF/noloci.txt" "$OUT/noloci.txt" | head -20; fail=1; fi
 fi
 echo "----"; [ $fail -eq 0 ] && echo "OK" || echo "ECHEC"
 exit $fail

@@ -1,0 +1,28 @@
+ProphetOric 0.7.0                 fiche
+
+Hello Tape
+par : Test
+
+Programme BASIC autorun de test.
+
+
+
+
+
+
+
+
+
+
+
+
+
+fichiers (1) : hello.tap
+
+! peut ne pas fonctionner sans :
+loci>=0.3.1, picowifi
+
+
+
+
+g telecharger sur le LOCI   b retour

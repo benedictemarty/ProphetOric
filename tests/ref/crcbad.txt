@@ -23,6 +23,6 @@ fichiers (1) : zorg.tap
 
 
 
-OK : empreintes CRC-32 verifiees
+echec : EMPREINTE DIFFERENTE (garde)
 [##############################] 100%
-termine : 1 fichier(s) l=lancer
+g reessayer   b retour

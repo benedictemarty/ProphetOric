@@ -1,0 +1,28 @@
+ProphetOric 0.7.0           LOCI absent
+
+
+Interface serie trouvee, mais pas l'API
+du LOCI ($03AF) : pas de stockage.
+
+Le catalogue reste consultable ;
+telechargement, lancement et PROPHET.CFG
+sont impossibles.
+
+Verifier la cartouche LOCI.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+une touche = continuer

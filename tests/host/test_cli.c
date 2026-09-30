@@ -51,6 +51,17 @@ int main(void)
         CHECK(cli_parse_files(none, f, 4, &nf) == 1 && nf == 0);
         CHECK(cli_parse_files(badf, f, 4, &nf) == 0);
     }
+    {   /* réponses réelles de prophetd 0.14 (tests/repo, 2026-09-30) */
+        char crc[] = "7eba6c8f\n\r";
+        char crc2[] = "7eba6c8f\n\r0badf00d\n\r";
+        char req[] = "loci>=0.3.1\n\rpicowifi\n\r";
+        char empty[] = "";
+        char *v[4]; unsigned char nv;
+        CHECK(cli_parse_lines(crc, v, 4, &nv) == 1 && nv == 1 && !strcmp(v[0], "7eba6c8f"));
+        CHECK(cli_parse_lines(crc2, v, 4, &nv) == 1 && nv == 2 && !strcmp(v[1], "0badf00d"));
+        CHECK(cli_parse_lines(req, v, 1, &nv) == 1 && nv == 1 && !strcmp(v[0], "loci>=0.3.1"));
+        CHECK(cli_parse_lines(empty, v, 4, &nv) == 0 && nv == 0);
+    }
     printf("%s : %d échec(s)\n", __FILE__, fails);
     return fails != 0;
 }

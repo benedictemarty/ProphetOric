@@ -22,7 +22,7 @@ colonnes.
 fichiers (1) : zorg.tap
 
 
+deja telecharge (identique)
 
-OK : empreintes CRC-32 verifiees
-[##############################] 100%
-termine : 1 fichier(s) l=lancer
+
+l lancer   g retelecharger   b retour

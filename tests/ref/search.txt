@@ -1,4 +1,4 @@
-ProphetOric 0.6.2                ? zorg
+ProphetOric 0.7.0                ? zorg
 
 > Zorg
 
@@ -25,4 +25,4 @@ ProphetOric 0.6.2                ? zorg
 
 
 
-page 1/1 j/k n/p entree=fiche b=retour
+page 1/1 j/k n/p entree=fiche b ?

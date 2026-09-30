@@ -19,7 +19,9 @@
 unsigned char loci_present(void);                                  /* signature A9/A2/60 en $03B3/5/7 */
 int  loci_open(const char *path, unsigned char flags);            /* fd ≥ 0, ou < 0 */
 int  loci_read(unsigned char fd, unsigned char *buf, unsigned char n);   /* octets lus (0 = fin), < 0 erreur */
+int  loci_read_crc(unsigned char fd, unsigned char n);                  /* idem, octets passés au CRC-32 (crc32.h) */
 int  loci_write(unsigned char fd, const unsigned char *buf, unsigned char n); /* octets écrits, < 0 erreur */
+long loci_seek_set(unsigned char fd, unsigned long off);         /* LSEEK SEEK_SET ; < 0 = erreur */
 int  loci_close(unsigned char fd);
 int  loci_mkdir(const char *path);
 unsigned int loci_errno(void);

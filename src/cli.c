@@ -127,3 +127,12 @@ unsigned char cli_parse_files(char *buf, struct cli_file *files, unsigned char m
     }
     return 1;
 }
+
+/* /crc32/<id>, /requires/<id>, /launch/<id> : une valeur par ligne ("7eba6c8f\n\r"...) */
+unsigned char cli_parse_lines(char *buf, char **out, unsigned char max, unsigned char *n)
+{
+    char *p = skip_eol(buf);
+    *n = 0;
+    while (*p && *n < max) { out[(*n)++] = p; p = cut_eol(p); }
+    return *n != 0;
+}

@@ -3,3 +3,4 @@ author: Test
 platform: oric
 date: 2020-01-01
 description: Programme BASIC autorun de test.
+requires: ["loci >= 0.3.1", picowifi]

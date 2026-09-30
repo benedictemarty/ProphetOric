@@ -1,4 +1,4 @@
-ProphetOric 0.6.2            oric-games
+ProphetOric 0.7.0            oric-games
 
 > Zorg
   Hello Tape
@@ -25,4 +25,4 @@ ProphetOric 0.6.2            oric-games
 
 
 
-page 1/1 j/k n/p entree=fiche b=retour
+page 1/1 j/k n/p entree=fiche b ?

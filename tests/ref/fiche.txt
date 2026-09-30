@@ -1,15 +1,13 @@
-ProphetOric 0.6.2                 fiche
+ProphetOric 0.7.0                 fiche
 
 Zorg
-par :
-Tansoft
+par : Tansoft
 
 Un jeu Oric de test, avec une
 description assez longue pour verifier
 le retour a la ligne sur quarante
 colonnes.
 
-fichiers : 1
 
 
 
@@ -20,6 +18,8 @@ fichiers : 1
 
 
 
+
+fichiers (1) : zorg.tap
 
 
 

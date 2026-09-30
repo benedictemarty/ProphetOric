@@ -1,11 +1,7 @@
-ProphetOric 0.6.2                 fiche
+ProphetOric 0.7.0                 fiche
 
 Dune Explorer
-par :
-Loriciels
-
-
-fichiers : 1
+par : Loriciels
 
 
 
@@ -23,6 +19,10 @@ fichiers : 1
 
 
 
+fichiers (1) : dune.tap
 
 
+
+OK : empreintes CRC-32 verifiees
+[##############################] 100%
 termine : 1 fichier(s) l=lancer

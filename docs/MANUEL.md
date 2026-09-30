@@ -46,6 +46,7 @@ touches disponibles ou message d'état.
 | `g` | télécharger le programme affiché (fiche) |
 | `l` | lancer le programme téléchargé |
 | `c` | configuration |
+| `?` (ou `h`) | aide (rappel des touches) |
 | `échap` | annuler une saisie |
 | `q` | quitter (retour au BASIC) |
 
@@ -72,14 +73,24 @@ comme une catégorie.
 ![fiche](img/03-fiche.png)
 
 La fiche donne le titre, l'auteur, la description (repliée à 40 colonnes)
-et le nombre de fichiers.
+et la liste des fichiers. Si l'auteur a déclaré des **composants
+minimums** (ex. `loci>=0.3.1`, `picowifi`), la fiche affiche « ! peut ne pas
+fonctionner sans : … » — simple avertissement, rien n'est vérifié sur votre
+Oric. Si le programme est **déjà téléchargé et identique** à celui du
+serveur, la fiche l'indique (« deja telecharge (identique) ») : `l` le lance
+directement, `g` le retélécharge.
 
 ## 5. Télécharger et lancer
 
 Sur la fiche, `g` télécharge tous les fichiers du programme dans le dossier
-configuré (§6). En bas à droite, une roue `-\|/` tourne et le compteur de Ko
-avance ; le transfert se fait par tranches de 32 Ko et reprend seul en cas
-de coupure. Les fichiers `.zip` sont ignorés (inutilisables sur Oric).
+configuré (§6). En bas : « fichier i/n », une barre de progression (mise à
+jour entre deux tranches de 32 Ko) et, pendant la réception, une roue
+`-\|/` et le compteur de Ko. Le transfert reprend seul en cas de coupure.
+Chaque fichier est ensuite **relu sur le LOCI et vérifié par CRC‑32**
+(empreinte publiée par le serveur) : « OK : empreintes CRC-32 verifiees ».
+Un marqueur est alors écrit dans le sous-dossier caché `.prophet/` du
+dossier (il sert au « déjà téléchargé »). Les fichiers `.zip` sont ignorés
+(inutilisables sur Oric).
 
 ![téléchargement terminé](img/04-telechargement.png)
 
@@ -146,19 +157,22 @@ alors les volumes).
 | Message (bas de l'écran) | Cause probable | Que faire |
 |---|---|---|
 | écran « materiel absent » (Aucune interface serie…) | pas de LOCI ni de modem, ou lancé depuis la page « Jouer » du site (qui n'émule ni l'un ni l'autre) | brancher le LOCI + PicoWiFi, redémarrer ; sur PC : Phosphoric `--loci --serial picowifi` |
+| écran « LOCI absent » | interface série trouvée mais pas l'API du LOCI | le catalogue reste consultable ; télécharger demande le LOCI |
+| `EMPREINTE DIFFERENTE (garde)` | le fichier reçu ne correspond pas à celui du serveur (transmission altérée) | relancer `g` ; le fichier fautif reste sur le stockage |
+| `OK (serveur sans empreintes : non verifie)` | serveur Prophet ancien (sans `/crc32`) | rien : seule la taille a été contrôlée |
 | `pas de modem (ATZ)` | le modem ne répond pas | vérifier le PicoWiFi (LED), `AT` dans OricTel |
 | `connexion refusee (ATD)` | Wi‑Fi non associé, serveur/port faux | vérifier le Wi‑Fi du modem, la configuration |
 | `pas de reponse` | serveur muet | réessayer ; vérifier hôte/port |
 | `introuvable 404` | programme retiré, ou zone réservée sans mot de passe | mot de passe (§6) |
 | `trop d'essais 429` | mot de passe faux répété (10 essais / 10 min) | attendre 10 min |
 | `fichier refuse par le LOCI (dossier ?)` | dossier cible absent ou volume non monté | choisir un dossier existant (`c`), ou `n` pour le créer |
-| `fichier incomplet` | coupure persistante | relancer `g` (le fichier repart de zéro) |
+| `fichier incomplet` | coupure persistante (plus de 3 essais par tranche) | relancer `g` (le fichier repart de zéro) |
 | `montage cassette/disquette impossible` | fichier absent ou LOCI occupé | vérifier le fichier sur le stockage |
 
 ## 9. Limites connues
 
-- Pas de vérification SHA‑256 (le serveur la publie ; la taille est
-  contrôlée).
+- Vérification par CRC‑32 (détecte les erreurs de transmission ; ce n'est
+  pas une signature). Pas de SHA‑256 : trop lent sur 6502.
 - Les fichiers `.zip` du catalogue ne sont pas récupérés.
 - 9600 bauds : environ 1 Ko/s ; une disquette de 1 Mo demande ~18 minutes.
 - Un seul mot de passe (zone réservée), pas de comptes.

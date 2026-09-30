@@ -8,8 +8,8 @@ Client du dépôt de programmes **Prophet** (`prophet.3617.fr`, serveur
 catalogue Oric (zone réservée, mot de passe), fiche, téléchargement du
 `.tap`/`.dsk` sur le stockage du LOCI, lancement.
 
-**État : sprint 5** (`build/prophet.tap`, ~18 Ko) : catégories / recherche →
-liste paginée → fiche → `g` télécharge sur le LOCI (tranches Range de 32 Ko, reprise sur coupure) → `l` monte la cassette
+**État : 0.7.0, sprint 7** (`build/prophet.tap`, ~27 Ko) : catégories / recherche →
+liste paginée → fiche (fichiers, composants minimums, « déjà téléchargé ») → `g` télécharge sur le LOCI (tranches Range de 32 Ko, reprise sur coupure, barre de progression) et **vérifie chaque fichier par CRC‑32** → `l` monte la cassette
 (`CLOAD""`) ou démarre la disquette (`MIA_BOOT`) ; `PROPHET.CFG` et écran de
 configuration (`c` : hôte, HTTP/TLS, port, explorateur volumes → dossiers, mot de passe) ; ACIA à **9600 bauds**, vérifié avec l'anneau de 32 octets
 du firmware LOCI ; via le modem PicoWiFi émulé de Phosphoric (vraies sockets). Validation **en émulation uniquement**
@@ -18,9 +18,9 @@ du firmware LOCI ; via le modem PicoWiFi émulé de Phosphoric (vraies sockets).
 ```
 make            # build/prophet.tap (prophet.3617.fr:8998)
 make run        # Phosphoric SDL + LOCI (flash = ./flash/, avec microdis.rom) + modem PicoWiFi émulé → prophet.3617.fr
-make test       # tests hôte (cli, http sur faux modem) + 9 scénarios Phosphoric headless → prophetd local (ONLY=nom ; LONG=1 : disquette 1 Mo, 18 min)
+make test       # tests hôte (cli, CRC-32, http sur faux modem) + scénarios Phosphoric headless → prophetd local (ONLY=nom ; LONG=1 : disquette 1 Mo, 18 min)
 ```
-Touches : j/k (flèches) choisir, entrée ouvrir, b retour, n/p page, s chercher, g télécharger (fiche), l lancer (cassette montée + CLOAD"" / disquette + MIA_BOOT), c configuration, q quitter.
+Touches : j/k (flèches) choisir, entrée ouvrir, b retour, n/p page, s chercher, g télécharger (fiche), l lancer (cassette montée + CLOAD"" / disquette + MIA_BOOT), c configuration, ? aide, q quitter.
 
 | | |
 |---|---|

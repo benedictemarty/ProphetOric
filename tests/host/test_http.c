@@ -5,6 +5,8 @@
 #include "fake_serial.h"
 
 static int fails;
+static unsigned int sunk; static unsigned char sunkbuf[2048];
+static unsigned char sink(const unsigned char *b, unsigned char n) { memcpy(sunkbuf + sunk, b, n); sunk += n; return 1; }
 #define CHECK(c) do { if (!(c)) { printf("FAIL %s:%d %s\n", __FILE__, __LINE__, #c); fails++; } } while (0)
 
 int main(void)
@@ -42,6 +44,26 @@ int main(void)
     fake_reset("HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n0123456789");   /* tampon plus petit que le corps */
     CHECK(http_get("/x", 0, buf, 6, &len) == 1 && len == 5 && !strcmp(buf, "01234"));
 
+    {   /* coupure en cours de corps : le « NO CARRIER (durée) » du modem n'est pas du fichier */
+        static char rep[600]; unsigned long got; unsigned int k;
+        strcpy(rep, "HTTP/1.1 206 Partial Content\r\nContent-Length: 1000\r\n\r\n");
+        k = (unsigned int)strlen(rep);
+        for (unsigned int i = 0; i < 300; ++i) rep[k + i] = 'a' + i % 26;
+        strcpy(rep + k + 300, "\r\nNO CARRIER (00:00:00)\r\n");
+        fake_reset(rep); sunk = 0;
+        CHECK(http_get_stream("/files/x/0", "bytes=0-999", sink, &got) == 1);
+        CHECK(got == 300 && sunk == 300 && sunkbuf[299] == 'a' + 299 % 26);
+        /* à cheval sur deux blocs de 128 : 8 octets parasites déjà remis → got recule */
+        strcpy(rep + k + 120, "\r\nNO CARRIER (00:00:00)\r\n");
+        fake_reset(rep); sunk = 0;
+        CHECK(http_get_stream("/files/x/0", "bytes=0-999", sink, &got) == 1);
+        CHECK(got == 120 && sunk == 128);
+        /* sans durée */
+        for (unsigned int i = 0; i < 300; ++i) rep[k + i] = 'a' + i % 26;
+        strcpy(rep + k + 200, "\r\nNO CARRIER\r\n");
+        fake_reset(rep); sunk = 0;
+        CHECK(http_get_stream("/files/x/0", "bytes=0-999", sink, &got) == 1 && got == 200);
+    }
     printf("%s : %d échec(s)\n", __FILE__, fails);
     return fails != 0;
 }

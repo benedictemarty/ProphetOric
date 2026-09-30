@@ -66,7 +66,14 @@ src/config.c       PROPHET.CFG sur le LOCI (hôte / port / dossier / mot de pass
 - Mémoire : programme sous `$9800` (HIRES non utilisé au début), tampon de
   réception 4 Ko, liste `ipp=16`.
 - SHA‑256 : le 6502 NMOS sans `phx`/`stz`… — l'asm 65C02 de ProphetGui n'est
-  pas portable tel quel ; contrôle par **taille** d'abord, SHA optionnel.
+  pas portable tel quel. **Décision 0.7.0** : CRC‑32 (`/crc32/<id>`, comme
+  ProphetGui depuis 0.10), boucle NMOS `src/crc32_asm.s` (~40 cycles/octet)
+  qui lit directement la XSTACK du LOCI ; calcul **après** réception (relecture
+  du fichier), jamais pendant (anneau de 32 octets à 9600 bauds).
+- Coupure en cours de corps : le modem émet `\r\nNO CARRIER (hh:mm:ss)\r\n`
+  sur la ligne série ; `http_get_stream` l'écarte et la reprise se
+  repositionne par `LSEEK` (op `$1A`, whence 2 = SEEK_SET — convention relevée
+  dans Phosphoric, **non vérifiée sur matériel**).
 
 ## 5. Plan de tests (émulation seulement, D2)
 - Hôte (gcc) : parseur `cli` sur fixtures réelles, machine d'états AT (comme
@@ -76,7 +83,7 @@ src/config.c       PROPHET.CFG sur le LOCI (hôte / port / dossier / mot de pass
   C:FILE` ; `--serial modem` ouvre de vraies sockets TCP → **prophetd local**
   (`tests/repo` avec un paquet Oric protégé, `PROPHET_PASSWORD`), comme
   `tests/run.sh` de ProphetGui. Vérifier le fichier écrit dans `DIR`
-  (taille / SHA côté hôte).
+  (`cmp` côté hôte, CRC‑32 côté client).
 - Références texte (`--screenshot-text-at`) plutôt que PPM tant que l'UI est
   en TEXT.
 
