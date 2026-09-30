@@ -8,7 +8,7 @@ Client du dépôt de programmes **Prophet** (`prophet.3617.fr`, serveur
 catalogue Oric (zone réservée, mot de passe), fiche, téléchargement du
 `.tap`/`.dsk` sur le stockage du LOCI, lancement.
 
-**État : 0.7.0, sprint 7** (`build/prophet.tap`, ~27 Ko) : catégories / recherche →
+**État : 0.7.1, sprint 7** (`build/prophet.tap`, ~27 Ko) : catégories / recherche →
 liste paginée → fiche (fichiers, composants minimums, « déjà téléchargé ») → `g` télécharge sur le LOCI (tranches Range de 32 Ko, reprise sur coupure, barre de progression) et **vérifie chaque fichier par CRC‑32** → `l` monte la cassette
 (`CLOAD""`) ou démarre la disquette (`MIA_BOOT`) ; `PROPHET.CFG` et écran de
 configuration (`c` : hôte, HTTP/TLS, port, explorateur volumes → dossiers, mot de passe) ; ACIA à **9600 bauds**, vérifié avec l'anneau de 32 octets

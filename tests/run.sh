@@ -114,7 +114,7 @@ for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:18994/cat && brea
 EXTRA="--serial-buffer 32" scenario baud "12000000:\n\p9\p9\n\p9\p9g" 120000000   # anneau de 32 octets (firmware LOCI) à 9600 bauds
 if ! want baud; then :; elif cmp -s "$OUT/flash_baud/zorg.tap" tests/repo/oric-games/zorg/zorg.tap && grep -q "termine : 1 fichier" "$OUT/baud.txt"; then echo "PASS baud_ring32 (20 Ko intacts a 9600 bauds avec un anneau de 32 octets)"
 else echo "FAIL baud_ring32"; tail -1 "$OUT/baud.txt"; fail=1; fi
-# sans LOCI ni modem (comme la page « Jouer » du site) : écran d'explication au lieu d'un arrêt muet
+# sans LOCI ni modem (Oric nu, émulateur sans --loci) : écran d'explication au lieu d'un arrêt muet
 if want noacia; then
     "$EMU" -r "$ROM" -t "$TAP" -f --headless --realtime --cycles 12100000 --screenshot-text-at "12000000:$OUT/noacia.txt" >"$OUT/noacia.log" 2>&1
     if [ "$mode" = ref ]; then cp "$OUT/noacia.txt" "$REF/noacia.txt"; echo "REF  noacia"; cat "$OUT/noacia.txt"

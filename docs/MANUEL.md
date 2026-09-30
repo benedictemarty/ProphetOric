@@ -156,7 +156,7 @@ alors les volumes).
 
 | Message (bas de l'écran) | Cause probable | Que faire |
 |---|---|---|
-| écran « materiel absent » (Aucune interface serie…) | pas de LOCI ni de modem, ou lancé depuis la page « Jouer » du site (qui n'émule ni l'un ni l'autre) | brancher le LOCI + PicoWiFi, redémarrer ; sur PC : Phosphoric `--loci --serial picowifi` |
+| écran « materiel absent » (Aucune interface serie…) | pas de LOCI ni de modem (Oric nu, émulateur lancé sans LOCI) | brancher le LOCI + PicoWiFi, redémarrer ; sans matériel : page « Jouer » de ProphetOric sur prophet.3617.fr (LOCI et modem émulés) ou Phosphoric `--loci --serial picowifi` |
 | écran « LOCI absent » | interface série trouvée mais pas l'API du LOCI | le catalogue reste consultable ; télécharger demande le LOCI |
 | `EMPREINTE DIFFERENTE (garde)` | le fichier reçu ne correspond pas à celui du serveur (transmission altérée) | relancer `g` ; le fichier fautif reste sur le stockage |
 | `OK (serveur sans empreintes : non verifie)` | serveur Prophet ancien (sans `/crc32`) | rien : seule la taille a été contrôlée |

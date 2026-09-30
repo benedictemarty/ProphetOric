@@ -1,4 +1,4 @@
-ProphetOric 0.7.0       materiel absent
+ProphetOric 0.7.1       materiel absent
 
 
 Aucune interface serie (ACIA 6551 en
@@ -8,9 +8,9 @@ le serveur.
 Materiel requis : cartouche LOCI et
 modem PicoWiFiModemUSB.
 
-Le lecteur du site (page Jouer) n'emule
-ni l'un ni l'autre : ProphetOric n'y
-fonctionne pas.
+Sans le materiel : page Jouer de
+ProphetOric sur prophet.3617.fr (LOCI et
+modem emules).
 
 Sur PC : Phosphoric --loci --serial
 picowifi

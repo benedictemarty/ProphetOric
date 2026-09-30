@@ -492,11 +492,11 @@ int main(void)
 {
     unsigned char sel = 0, c;
     title("");
-    if (!serial_probe(ACIA_BASE_LOCI)) {             /* ex. page « Jouer » du site : ni LOCI ni modem */
+    if (!serial_probe(ACIA_BASE_LOCI)) {             /* ni LOCI ni modem (Oric nu, émulateur sans --loci) */
         title("materiel absent");
         { unsigned char y = wrap(3, "Aucune interface serie (ACIA 6551 en $0380) : ProphetOric ne peut pas joindre le serveur.");
           y = wrap(y + 1, "Materiel requis : cartouche LOCI et modem PicoWiFiModemUSB.");
-          y = wrap(y + 1, "Le lecteur du site (page Jouer) n'emule ni l'un ni l'autre : ProphetOric n'y fonctionne pas.");
+          y = wrap(y + 1, "Sans le materiel : page Jouer de ProphetOric sur prophet.3617.fr (LOCI et modem emules).");
           wrap(y + 1, "Sur PC : Phosphoric --loci --serial picowifi"); }
         status("une touche = retour au BASIC");
         cgetc(); clrscr(); return 1;
