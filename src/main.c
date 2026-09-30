@@ -16,6 +16,7 @@
 #include "config.h"
 #include "loci.h"
 #include "version.h"
+#include "lang.h"
 
 #define ROWS 28
 #define COLS 40
@@ -95,11 +96,11 @@ static unsigned char key(void)
 static unsigned char fetch(const char *path)
 {
     unsigned int len;
-    status("connexion...");
-    if (!http_get(path, 0, body, sizeof body, &len)) { status(http_error ? http_error : "erreur reseau"); return 0; }
+    status(T(S_CONNECTING));
+    if (!http_get(path, 0, body, sizeof body, &len)) { status(http_error ? http_error : T(S_ERR_NET)); return 0; }
     if (http_status != 200) {
         char m[24]; unsigned int v = http_status; unsigned char k;
-        strcpy(m, http_status == 404 ? "introuvable " : http_status == 429 ? "trop d'essais " : "erreur serveur ");
+        strcpy(m, http_status == 404 ? T(S_E404) : http_status == 429 ? T(S_E429) : T(S_ESRV));
         k = (unsigned char)strlen(m); m[k++] = '0' + v / 100; m[k++] = '0' + (v / 10) % 10; m[k++] = '0' + v % 10; m[k] = 0;
         status(m); return 0;
     }
@@ -179,12 +180,12 @@ static unsigned char browse_dir(char *out, unsigned char max)
     if (!at_volumes) dir_list(cur, 0);
     for (;;) {
         char l[COLS + 1];
-        title("dossier");
-        strcpy(l, at_volumes ? "volumes du LOCI :" : "dossier : /"); if (!at_volumes) strncat(l, cur, COLS - 12);
+        title(T(S_T_DIR));
+        strcpy(l, at_volumes ? T(S_VOLUMES) : T(S_DIR_PFX)); if (!at_volumes) strncat(l, cur, COLS - 12);
         line(2, l);
         for (i = 0; i < dir_count && i < DIR_MAX; ++i) { l[0] = i == sel ? '>' : ' '; l[1] = ' '; strcpy(l + 2, dir_names[i]); line(4 + i, l); }
-        if (!dir_count) line(4, at_volumes ? "  (aucun volume)" : "  (aucun sous-dossier)");
-        status(at_volumes ? "entree=ouvrir  esc=annuler" : "entree b=parent espace=choisir n=nouveau esc");
+        if (!dir_count) line(4, at_volumes ? T(S_NO_VOL) : T(S_NO_SUBDIR));
+        status(at_volumes ? T(S_K_VOL) : T(S_K_DIR));
         c = key();
         if (c == CH_ESC) return 0;
         if (c == 'j' && sel + 1 < dir_count) ++sel;
@@ -201,7 +202,7 @@ static unsigned char browse_dir(char *out, unsigned char max)
         }
         if (c == 'n') {                                        /* nouveau dossier dans le dossier courant */
             char nm[26], path[40]; nm[0] = 0;
-            line(ROWS - 3, "nom du nouveau dossier :");
+            line(ROWS - 3, T(S_NEWDIR));
             if (edit_field(ROWS - 2, nm, 24) && nm[0] && strlen(cur) + strlen(nm) + 2 < sizeof path) {
                 strcpy(path, cur); if (cur[0] && cur[strlen(cur) - 1] != ':') strcat(path, "/"); strcat(path, nm);
                 if (loci_mkdir(cur[0] ? path : nm) >= 0) { sel = 0; dir_list(cur, 0); for (i = 0; i < dir_count; ++i) if (!strcmp(dir_names[i], nm)) sel = i; }
@@ -218,15 +219,18 @@ static unsigned char browse_dir(char *out, unsigned char max)
     }
 }
 
+static const char *const lang_names[3] = { "fr", "en", "es" };
+
 static void config_draw(const char *host, const char *port, const char *dir, const char *pass, unsigned char tls)
 {
-    title("configuration");
-    line(2, "serveur (hote ou IP) :");            line(3, host);
-    line(5, "connexion :");                        line(6, tls ? "  HTTP 8998    > TLS 443 (modem)" : "> HTTP 8998      TLS 443 (modem)");
-    line(8, "port :");                             line(9, port);
-    line(11, "dossier LOCI (entree = explorer) :"); line(12, dir[0] ? dir : "(racine du flash)");
-    line(14, "mot de passe zones reservees :");    line(15, pass[0] ? "********" : "(aucun)");
-    status("entree = champ suivant   echap = annuler");
+    title(T(S_T_CFG));
+    line(2, T(S_C_HOST));            line(3, host);
+    line(5, T(S_C_CONN));                        line(6, tls ? "  HTTP 8998    > TLS 443 (modem)" : "> HTTP 8998      TLS 443 (modem)");
+    line(8, T(S_C_PORT));                             line(9, port);
+    line(11, T(S_C_DIR)); line(12, dir[0] ? dir : T(S_C_ROOT));
+    line(14, T(S_C_PASS));    line(15, pass[0] ? "********" : T(S_C_NONE));
+    line(17, T(S_C_LANG));
+    status(T(S_K_CFG));
 }
 
 static void config_screen(void)
@@ -244,12 +248,27 @@ static void config_screen(void)
     if (!browse_dir(dir, 30)) goto out;
     config_draw(host, port, dir, pass, tls);
     if (!edit_field(15, pass, 30)) goto out;
-    strcpy(http_host, host); strcpy(http_port, port); strcpy(dl_dir, dir); strcpy(http_pass, pass);
-    status(config_save() ? "enregistre dans PROPHET.CFG - b retour" : "applique (PROPHET.CFG non ecrit) - b retour");
+    {   /* langue : espace = suivante (fr, en, es), entrée = valider */
+        unsigned char l = lang_code[0] == 'e' ? (lang_code[1] == 'n' ? 1 : 2) : 0, c;
+        for (;;) {
+            char s[COLS + 1]; unsigned char k;
+            s[0] = 0;
+            for (k = 0; k < 3; ++k) { strcat(s, k == l ? "> " : "  "); strcat(s, lang_names[k]); strcat(s, "   "); }
+            line(18, s);
+            c = key();
+            if (c == '\n') break;
+            if (c == CH_ESC) goto out;
+            if (c == ' ' || c == 'j' || c == 'n') l = (unsigned char)((l + 1) % 3);
+            if (c == 'k' || c == 'b') l = (unsigned char)((l + 2) % 3);
+        }
+        strcpy(http_host, host); strcpy(http_port, port); strcpy(dl_dir, dir); strcpy(http_pass, pass);
+        if (!lang_set(lang_names[l])) { status(T(S_LNG_MISSING)); cgetc(); }
+    }
+    status(config_save() ? T(S_SAVED) : T(S_APPLIED));
     while (key() != 'b') ;
     return;
 out:
-    status("annule - b retour");
+    status(T(S_CANCELLED));
     while (key() != 'b') ;
 }
 
@@ -293,7 +312,7 @@ static void cat_uint(char *d, unsigned int v)
 static void dl_progress_cb(const char *name, unsigned long bytes)
 {
     char s[COLS + 1];
-    strcpy(s, "fichier "); cat_uint(s, dl_index + 1); strcat(s, "/"); cat_uint(s, dl_nfiles);
+    strcpy(s, T(S_P_FILE)); cat_uint(s, dl_index + 1); strcat(s, "/"); cat_uint(s, dl_nfiles);
     strcat(s, " : "); strncat(s, name, COLS - 16); line(ROWS - 3, s);
     if (dl_total != 0xFFFFFFFFUL && dl_total) {                 /* [#####.....] 30 cases */
         unsigned char k, f = (unsigned char)(bytes >= dl_total ? 30 : bytes * 30 / dl_total);
@@ -303,10 +322,10 @@ static void dl_progress_cb(const char *name, unsigned long bytes)
         cat_uint(s, (unsigned int)(bytes >= dl_total ? 100 : bytes * 100 / dl_total)); strcat(s, "%");
         line(ROWS - 2, s);
     } else line(ROWS - 2, "");
-    if (dl_phase) { strcpy(s, "verification CRC-32 "); strncat(s, name, 18); }
-    else if (!bytes) { strcpy(s, "telechargement "); strncat(s, name, 16); }
+    if (dl_phase) { strcpy(s, T(S_P_VERIFY)); strncat(s, name, 18); }
+    else if (!bytes) { strcpy(s, T(S_P_DOWNLOAD)); strncat(s, name, 16); }
     else {
-        strcpy(s, "recu "); cat_uint(s, (unsigned int)(bytes >> 10));
+        strcpy(s, T(S_P_RECEIVED)); cat_uint(s, (unsigned int)(bytes >> 10));
         if (dl_total != 0xFFFFFFFFUL) { strcat(s, " / "); cat_uint(s, (unsigned int)((dl_total + 1023) >> 10)); }
         strcat(s, " Ko");
     }
@@ -316,24 +335,9 @@ static void dl_progress_cb(const char *name, unsigned long bytes)
 /* écran d'aide (?) */
 static void help_screen(void)
 {
-    title("aide");
-    wrap(2, "fleches ou h/j/k/l : choisir\n"
-            "entree : ouvrir     b : retour\n"
-            ", . : onglet precedent / suivant\n"
-            "n/p : page suivante / precedente\n"
-            "v : grille / liste compacte\n"
-            "s : chercher (titre, auteur)\n"
-            "c : configuration (serveur, dossier, mot de passe)\n"
-            "q : retour au BASIC\n"
-            "\n"
-            "Fiche : g telecharge sur le LOCI (verifie par CRC-32), "
-            "l lance : cassette montee + CLOAD\"\" ou disquette + demarrage Microdisc.\n"
-            "\n"
-            "Reglages : PROPHET.CFG sur le LOCI. "
-            "Marqueurs de telechargement : .prophet/ dans le dossier.\n"
-            "\n"
-            "ProphetOric " VERSION " - prophet.3617.fr");
-    status("une touche = retour");
+    title(T(S_T_HELP));
+    wrap(2, T(S_HELP));
+    status(T(S_K_ANYKEY));
     cgetc();
 }
 
@@ -362,8 +366,8 @@ static void put(unsigned char x, unsigned char y, const char *t, unsigned char n
 
 static const char *tab_label(unsigned char t)
 {
-    if (!t) return "tous";
-    return strcmp(cat_names[t - 1], "en-developpement") ? cat_names[t - 1] : "beta";   /* comme ProphetGui */
+    if (!t) return T(S_TAB_ALL);
+    return strcmp(cat_names[t - 1], "en-developpement") ? cat_names[t - 1] : T(S_TAB_BETA);   /* comme ProphetGui */
 }
 
 /* ligne 1 : onglets ; l'onglet courant en vidéo inverse, < > si ça déborde */
@@ -418,29 +422,29 @@ static void draw_card(unsigned char i, unsigned char sel)
         }
         if (r == 4) for (k = 0; k < cut && k < n; ++k) p[2 + k] = (unsigned char)t[k];
         if (r == 5) { const char *u = t + cut; while (*u == ' ') ++u; for (k = 0; k < 7 && u[k]; ++k) p[2 + k] = (unsigned char)u[k]; }
-        if (r == 7 && dev) { p[0] = 0x17; p[1] = 1; put(cx + 2, cy + r, "EN DEV", 6, 0); }
+        if (r == 7 && dev) { p[0] = 0x17; p[1] = 1; put(cx + 2, cy + r, T(S_EN_DEV), 6, 0); }
     }
 }
 
 static void draw_page_line(const char *keys)
 {
     char s[COLS + 1];
-    strcpy(s, "page "); cat_uint(s, page + 1); strcat(s, "/"); cat_uint(s, listing.pages ? listing.pages : 1);
-    strcat(s, "  "); cat_uint(s, listing.total); strcat(s, " prog."); line(ROWS - 3, s);
+    strcpy(s, T(S_PAGE)); cat_uint(s, page + 1); strcat(s, "/"); cat_uint(s, listing.pages ? listing.pages : 1);
+    strcat(s, "  "); cat_uint(s, listing.total); strcat(s, T(S_PROG)); line(ROWS - 3, s);
     status(keys);
 }
 
 static void draw_main(unsigned char sel)
 {
     unsigned char i;
-    title(search_key[0] ? "recherche" : "catalogue");
+    title(search_key[0] ? T(S_T_SEARCH) : T(S_T_CATALOGUE));
     draw_tabs();
     if (view_list) {
         char l[COLS + 1];
         for (i = 0; i < listing.count && i < 16; ++i) {
             l[0] = i == sel ? '>' : ' '; l[1] = ' ';
             strncpy(l + 2, listing.item[i].title, COLS - 8); l[COLS - 6] = 0;
-            if (is_dev(listing.item[i].id)) strcat(l, " [dev]");
+            if (is_dev(listing.item[i].id)) strcat(l, T(S_DEV_MARK));
             line(3 + i, l);
         }
     } else {
@@ -451,8 +455,8 @@ static void draw_main(unsigned char sel)
             p += COLS; p[0] = 0x0A; put(1, 23, listing.item[sel].title, COLS - 1, 0);
         }
     }
-    if (!listing.count) line(5, "  (aucun programme)");
-    draw_page_line(search_key[0] ? "fleches entree n/p v b=retour ?" : "fleches entree ,. n/p s v c ? q");
+    if (!listing.count) line(5, T(S_EMPTY));
+    draw_page_line(search_key[0] ? T(S_K_SEARCHRES) : T(S_K_MAIN));
 }
 
 static unsigned char load_list(void)
@@ -463,7 +467,7 @@ static unsigned char load_list(void)
     strcat(path, view_list ? "?platform=oric&sort=date&ord=desc&ipp=16&page=" : "?platform=oric&sort=date&ord=desc&ipp=8&page=");
     cat_uint(path, page);                          /* comme ProphetGui : les plus récents d'abord */
     if (!fetch(path)) return 0;
-    if (!cli_parse_listing(body, &listing)) { status("reponse inattendue"); return 0; }
+    if (!cli_parse_listing(body, &listing)) { status(T(S_BADREPLY)); return 0; }
     return 1;
 }
 
@@ -485,10 +489,10 @@ static unsigned char load_cats(void)
 
 static void info_keys(unsigned char installed)
 {
-    line(ROWS - 4, installed ? "deja telecharge (identique)" : "");
-    if (!dl_nfiles) status("b retour");
-    else if (installed) status("l lancer   g retelecharger   b retour");
-    else status("g telecharger sur le LOCI   b retour");
+    line(ROWS - 4, installed ? T(S_INSTALLED) : "");
+    if (!dl_nfiles) status(T(S_K_BACK));
+    else if (installed) status(T(S_K_INSTALLED));
+    else status(T(S_K_INFO));
 }
 
 static void info_screen(const char *id)
@@ -497,15 +501,15 @@ static void info_screen(const char *id)
     unsigned char y, i, installed;
     strcpy(path, "/app/"); strcat(path, id);
     if (!fetch(path)) { cgetc(); return; }
-    if (!cli_parse_info(body, &info)) { status("reponse inattendue"); cgetc(); return; }
-    status("connexion...");
+    if (!cli_parse_info(body, &info)) { status(T(S_BADREPLY)); cgetc(); return; }
+    status(T(S_CONNECTING));
     if (!dl_fetch_meta(id)) dl_nfiles = 0;                       /* fiche affichée quand même */
     dl_last_tap[0] = dl_last_dsk[0] = 0;
     installed = dl_nfiles && dl_installed(id);
-    title("fiche");
-    if (is_dev(id)) { SCR[COLS] = 0x11; SCR[COLS + 1] = 7; put(2, 1, " EN DEVELOPPEMENT ", 18, 0); }   /* bandeau rouge */
+    title(T(S_T_INFO));
+    if (is_dev(id)) { SCR[COLS] = 0x11; SCR[COLS + 1] = 7; put(2, 1, T(S_BANNER), 18, 0); }   /* bandeau rouge */
     wrap_end = 5; y = wrap(2, info.title);
-    if (info.author) { char s[COLS + 1]; strcpy(s, "par : "); strncat(s, info.author, COLS - 6); line(y++, s); }
+    if (info.author) { char s[COLS + 1]; strcpy(s, T(S_BY)); strncat(s, info.author, COLS - 6); line(y++, s); }
     ++y;
     wrap_end = dl_nreq ? ROWS - 10 : ROWS - 8;
     if (info.description) y = wrap(y, info.description);
@@ -514,7 +518,7 @@ static void info_screen(const char *id)
     {
         char s[COLS * 2 + 1];
         unsigned char r = dl_nreq ? ROWS - 9 : ROWS - 7;
-        strcpy(s, "fichiers ("); cat_uint(s, dl_nfiles ? dl_nfiles : info.files); strcat(s, ") : ");
+        strcpy(s, T(S_FILES_OPEN)); cat_uint(s, dl_nfiles ? dl_nfiles : info.files); strcat(s, ") : ");
         for (i = 0; i < dl_nfiles && strlen(s) + strlen(dl_files[i].name) + 2 < sizeof s; ++i) {
             if (i) strcat(s, ", ");
             strcat(s, dl_files[i].name);
@@ -522,12 +526,12 @@ static void info_screen(const char *id)
         if (i < dl_nfiles) strcat(s, "...");
         wrap_end = r + 2; wrap(r, s); wrap_end = ROWS - 1;
         if (dl_nreq) {
-            strcpy(s, "! peut ne pas fonctionner sans : ");
+            strcpy(s, T(S_REQUIRES));
             for (i = 0; i < dl_nreq && strlen(s) + strlen(dl_req[i]) + 2 < sizeof s; ++i) { if (i) strcat(s, ", "); strcat(s, dl_req[i]); }
             wrap_end = ROWS - 5; wrap(ROWS - 7, s); wrap_end = ROWS - 1;
         }
     }
-    if (!dl_nfiles && dl_error) { char s[COLS + 1]; strcpy(s, "fichiers : "); strncat(s, dl_error, COLS - 11); line(ROWS - 3, s); }
+    if (!dl_nfiles && dl_error) { char s[COLS + 1]; strcpy(s, T(S_FILES_ERR)); strncat(s, dl_error, COLS - 11); line(ROWS - 3, s); }
     info_keys(installed);
     for (;;) {
         unsigned char c = key();
@@ -540,29 +544,29 @@ static void info_screen(const char *id)
             n = download_package(id, dl_progress_cb);
             http_tick = 0;
             if (n && !dl_error) {
-                char s[COLS + 1]; strcpy(s, "termine : "); cat_uint(s, n); strcat(s, dl_skipped ? " fich. (zip ignore)" : " fichier(s)");
-                strcat(s, (dl_last_tap[0] || dl_last_dsk[0]) ? " l=lancer" : " b=retour");
-                line(ROWS - 3, dl_verified ? "OK : empreintes CRC-32 verifiees" : "OK (serveur sans empreintes : non verifie)");
+                char s[COLS + 1]; strcpy(s, T(S_DONE)); cat_uint(s, n); strcat(s, dl_skipped ? T(S_N_ZIP) : T(S_N_FILES));
+                strcat(s, (dl_last_tap[0] || dl_last_dsk[0]) ? T(S_K_LAUNCH) : T(S_K_BACK2));
+                line(ROWS - 3, dl_verified ? T(S_OK_CRC) : T(S_OK_NOCRC));
                 status(s);
             } else {
-                char s[COLS + 1]; strcpy(s, "echec : "); strncat(s, dl_error ? dl_error : "?", 31);
-                line(ROWS - 3, s); status("g reessayer   b retour");
+                char s[COLS + 1]; strcpy(s, T(S_FAILED)); strncat(s, dl_error ? dl_error : "?", 31);
+                line(ROWS - 3, s); status(T(S_K_RETRY));
             }
         }
         if (c == 'l' && dl_last_dsk[0]) {
             /* disquette : montée en lecteur A (0) puis MIA_BOOT (Microdisc + BASIC 1.1) — le
              * LOCI bascule les ROM et resette l'Oric, qui démarre sur la disquette. */
-            if (loci_mount(0, dl_last_dsk) < 0) { status("montage disquette impossible"); continue; }
-            clrscr(); cputs("Disquette montee en A :\r\n"); cputs(dl_last_dsk); cputs("\r\n\r\nDemarrage...\r\n");
+            if (loci_mount(0, dl_last_dsk) < 0) { status(T(S_MNT_DSK_ERR)); continue; }
+            clrscr(); cputs(T(S_DSK_MOUNTED)); cputs("\r\n"); cputs(dl_last_dsk); cputs("\r\n\r\n"); cputs(T(S_BOOTING)); cputs("\r\n");
             loci_boot(LOCI_BOOT_FDC | LOCI_BOOT_B11);
-            status("MIA_BOOT refuse"); continue;
+            status(T(S_BOOT_ERR)); continue;
         }
         if (c == 'l' && dl_last_tap[0]) {
             /* montage de la cassette sur le LOCI puis retour au BASIC : CLOAD"" charge (et
              * lance, si autorun) le programme — le LOCI joue la cassette montée. */
-            if (loci_mount(LOCI_MNT_TAP, dl_last_tap) < 0) { status("montage cassette impossible"); continue; }
+            if (loci_mount(LOCI_MNT_TAP, dl_last_tap) < 0) { status(T(S_MNT_TAP_ERR)); continue; }
             clrscr();
-            cputs("Cassette montee sur le LOCI :\r\n"); cputs(dl_last_tap); cputs("\r\n\r\nTapez  CLOAD\"\"  pour charger.\r\n\r\n");
+            cputs(T(S_TAP_MOUNTED)); cputs("\r\n"); cputs(dl_last_tap); cputs("\r\n\r\n"); cputs(T(S_TYPE_CLOAD)); cputs("\r\n\r\n");
             exit(0);
         }
     }
@@ -591,6 +595,7 @@ int main(void)
     }
     serial_init(ACIA_BASE_LOCI);
     config_load();                                   /* PROPHET.CFG sur le LOCI, sinon valeurs compilées */
+    if (cfg_lang[0] && !lang_set(cfg_lang)) { status(T(S_LNG_MISSING)); cgetc(); }   /* 5e ligne : fr / en / es */
     if (!load_cats()) { cgetc(); return 1; }
     page = 0;
     if (!load_list()) cgetc();
@@ -622,7 +627,7 @@ int main(void)
         if (c == 'b' && search_key[0]) { search_key[0] = 0; page = 0; sel = 0; reload = 1; }
         if (c == 's') {                                  /* recherche : /search/<clé> (titre, description, auteur) */
             char k[24]; k[0] = 0;
-            title("recherche"); line(2, "mot a chercher (titre, auteur) :"); status("entree = chercher   echap = annuler");
+            title(T(S_T_SEARCH)); line(2, T(S_S_PROMPT)); status(T(S_K_SPROMPT));
             if (edit_field(3, k, 22) && k[0]) { strcpy(search_key, k); page = 0; sel = 0; }
             reload = 1;
         }

@@ -5,6 +5,7 @@
 #include <string.h>
 #include "download.h"
 #include "http.h"
+#include "lang.h"
 #include "cli.h"
 #include "loci.h"
 #include "crc32.h"
@@ -67,8 +68,8 @@ unsigned char dl_fetch_meta(const char *id)
     dl_error = 0; dl_nfiles = dl_ncrc = dl_nreq = 0;
     strcpy(path, "/files/"); strncat(path, id, 40);
     if (!http_get(path, 0, list, sizeof list, &len)) { dl_error = http_error; return 0; }
-    if (http_status != 200) { dl_error = "fichiers introuvables"; return 0; }
-    if (!cli_parse_files(list, dl_files, CLI_MAX_FILES, &dl_nfiles) || dl_nfiles == 0) { dl_error = "liste de fichiers invalide"; return 0; }
+    if (http_status != 200) { dl_error = T(S_E_NOFILES); return 0; }
+    if (!cli_parse_files(list, dl_files, CLI_MAX_FILES, &dl_nfiles) || dl_nfiles == 0) { dl_error = T(S_E_BADLIST); return 0; }
     /* empreintes : une par fichier, sinon pas de vérification (serveur < 0.13.1 : 404) */
     if (get_opt("/crc32/", id, crcbuf, sizeof crcbuf) && cli_parse_lines(crcbuf, dl_crc, CLI_MAX_FILES, &dl_ncrc) && dl_ncrc != dl_nfiles) dl_ncrc = 0;
     if (get_opt("/requires/", id, reqbuf, sizeof reqbuf)) cli_parse_lines(reqbuf, dl_req, DL_MAX_REQ, &dl_nreq);
@@ -158,8 +159,8 @@ unsigned char download_package(const char *id, dl_progress progress)
     unsigned char i, done = 0;
     char path[96];
     dl_error = 0; dl_verified = 0;
-    if (!loci_present()) { dl_error = "pas de LOCI (stockage)"; return 0; }
-    if (!dl_nfiles) { dl_error = "liste de fichiers vide"; return 0; }
+    if (!loci_present()) { dl_error = T(S_E_NOLOCI); return 0; }
+    if (!dl_nfiles) { dl_error = T(S_E_EMPTYLIST); return 0; }
     if (dl_dir[0] && dl_dir[strlen(dl_dir) - 1] != ':') loci_mkdir(dl_dir);   /* existe déjà : erreur ignorée */
     dl_last_tap[0] = 0; dl_last_dsk[0] = 0; dl_skipped = 0;
     for (i = 0; i < dl_nfiles; ++i) {
@@ -168,7 +169,7 @@ unsigned char download_package(const char *id, dl_progress progress)
         const char *name = dl_files[i].name;
         unsigned char ln = (unsigned char)strlen(name);
         dl_index = i; dl_phase = 0; dl_total = 0xFFFFFFFFUL;
-        if (ln > 30) { dl_error = "nom de fichier trop long"; return done; }
+        if (ln > 30) { dl_error = T(S_E_LONGNAME); return done; }
         if (ends(name, ".zip", ".ZIP")) { ++dl_skipped; continue; }
         in_dir(dst, name);
         strcpy(path, "/files/"); strcat(path, id); strcat(path, "/"); num(path + strlen(path), i);
@@ -182,7 +183,7 @@ unsigned char download_package(const char *id, dl_progress progress)
             unsigned long total = 0, expect = 0xFFFFFFFFUL;
             unsigned char tries = 0, ok = 0;
             cur_fd = loci_open(dst, LOCI_O_WRONLY | LOCI_O_CREAT | LOCI_O_TRUNC);
-            if (cur_fd < 0) { dl_error = "fichier refuse par le LOCI (dossier ?)"; return done; }
+            if (cur_fd < 0) { dl_error = T(S_E_REFUSED); return done; }
             for (;;) {
                 char range[32];
                 dl_base = total;
@@ -194,32 +195,32 @@ unsigned char download_package(const char *id, dl_progress progress)
                         dl_total = expect;
                         total += got;
                         if (http_status == 200 || total >= expect) { ok = total >= expect || expect == 0xFFFFFFFFUL; break; }
-                        if (got == 0) { if (++tries > 3) { dl_error = "fichier incomplet"; break; } }
+                        if (got == 0) { if (++tries > 3) { dl_error = T(S_E_INCOMPLETE); break; } }
                         else tries = 0;
                         if (progress) progress(name, total);
                         continue;
                     }
                     if (http_status == 416) { ok = expect != 0xFFFFFFFFUL && total >= expect; break; }
-                    dl_error = http_status == 404 ? "fichier introuvable" : "telechargement refuse"; break;
+                    dl_error = http_status == 404 ? T(S_E_404FILE) : T(S_E_DLREFUSED); break;
                 }
                 total += got;                                                               /* octets valides avant la coupure */
-                if (++tries > 3) { dl_error = http_error ? http_error : "fichier incomplet"; break; }
+                if (++tries > 3) { dl_error = http_error ? http_error : T(S_E_INCOMPLETE); break; }
                 if (progress) progress(name, total);
                 /* reprise : repositionnement exact (LSEEK) plutôt qu'en ajout — le NO CARRIER du
                  * modem a pu être écrit avant d'être reconnu, il sera recouvert */
                 loci_close((unsigned char)cur_fd);
                 cur_fd = loci_open(dst, LOCI_O_WRONLY);
-                if (cur_fd < 0 || loci_seek_set((unsigned char)cur_fd, total) < 0) { dl_error = "reprise impossible"; break; }
+                if (cur_fd < 0 || loci_seek_set((unsigned char)cur_fd, total) < 0) { dl_error = T(S_E_RESUME); break; }
             }
             loci_close((unsigned char)cur_fd);
-            if (!ok) { if (!dl_error) dl_error = "fichier incomplet"; return done; }
+            if (!ok) { if (!dl_error) dl_error = T(S_E_INCOMPLETE); return done; }
             got = total;
         }
         if (progress) progress(name, got);
         if (dl_ncrc) {                                                  /* relecture + CRC-32 (hors réception) */
             dl_phase = 1;
             if (progress) progress(name, got);
-            if (!verify(dst, dl_crc[i])) { dl_error = "EMPREINTE DIFFERENTE (garde)"; return done; }
+            if (!verify(dst, dl_crc[i])) { dl_error = T(S_E_CRC); return done; }
         }
         /* fichier à lancer : le premier .tap / .dsk (/launch/<id> du serveur n'accepte que .neo/.bas) */
         if (ends(name, ".tap", ".TAP") && !dl_last_tap[0]) strcpy(dl_last_tap, dst);

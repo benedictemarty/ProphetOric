@@ -1,7 +1,7 @@
-ProphetOric 0.9.0                 fiche
+ProphetOric 0.9.0                 ficha
 
 Zorg
-par : Tansoft
+por: Tansoft
 
 Un jeu Oric de test, avec une
 description assez longue pour verifier
@@ -19,10 +19,10 @@ colonnes.
 
 
 
-fichiers (1) : zorg.tap
+archivos (1) : zorg.tap
 
 
 
 
 
-g telecharger sur le LOCI   b retour
+g descargar al LOCI   b volver

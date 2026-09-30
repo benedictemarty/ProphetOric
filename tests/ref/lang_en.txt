@@ -1,5 +1,5 @@
 ProphetOric 0.9.0             catalogue
- tous  oric-games  beta
+ all  oric-games  beta
 
 
      Z         B         H
@@ -8,7 +8,7 @@ ProphetOric 0.9.0             catalogue
   Zorg      Beta      Hello
             Test      Tape
 
-            EN DEV
+            IN DEV
 
 
 
@@ -25,4 +25,4 @@ ProphetOric 0.9.0             catalogue
 
 page 1/1  3 prog.
 
-fleches entree ,. n/p s v c ? q
+arrows enter ,. n/p s v c ? q

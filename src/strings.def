@@ -1,0 +1,130 @@
+/* strings.def — textes de l'interface : S(identifiant, longueur maximale, fr, en, es).
+ * ASCII seul (jeu de caractères de l'Oric : pas d'accents). Le français est compilé dans
+ * le programme (lang.c) ; tools/mklng.c génère build/EN.LNG et build/ES.LNG, chargés sur
+ * demande en $A000 ; tests/host/test_lang.c vérifie les longueurs. Ajouter un texte = une
+ * ligne ici (les fichiers .LNG d'une autre version sont refusés : on reste en français).
+ * Les écrans « materiel absent » / « LOCI absent » restent en français : ils s'affichent
+ * avant la lecture de PROPHET.CFG (et sans LOCI, pas de fichier de langue). */
+S(S_CONNECTING,   40, "connexion...", "connecting...", "conectando...")
+S(S_ERR_NET,      40, "erreur reseau", "network error", "error de red")
+S(S_E404,         20, "introuvable ", "not found ", "no encontrado ")
+S(S_E429,         20, "trop d'essais ", "too many tries ", "demasiados intentos ")
+S(S_ESRV,         20, "erreur serveur ", "server error ", "error del servidor ")
+S(S_BADREPLY,     40, "reponse inattendue", "unexpected reply", "respuesta inesperada")
+S(S_T_DIR,        24, "dossier", "folder", "carpeta")
+S(S_VOLUMES,      40, "volumes du LOCI :", "LOCI volumes:", "volumenes del LOCI:")
+S(S_DIR_PFX,      12, "dossier : /", "folder: /", "carpeta: /")
+S(S_NO_VOL,       40, "  (aucun volume)", "  (no volume)", "  (ningun volumen)")
+S(S_NO_SUBDIR,    40, "  (aucun sous-dossier)", "  (no subfolder)", "  (ninguna subcarpeta)")
+S(S_K_VOL,        40, "entree=ouvrir  esc=annuler", "enter=open  esc=cancel", "intro=abrir  esc=cancelar")
+S(S_K_DIR,        40, "entree b=parent espace=choisir n=nouv.", "enter b=parent space=choose n=new esc", "intro b=padre espacio=elegir n=nueva")
+S(S_NEWDIR,       40, "nom du nouveau dossier :", "new folder name:", "nombre de la nueva carpeta:")
+S(S_T_CFG,        24, "configuration", "settings", "configuracion")
+S(S_C_HOST,       40, "serveur (hote ou IP) :", "server (host or IP):", "servidor (host o IP):")
+S(S_C_CONN,       40, "connexion :", "connection:", "conexion:")
+S(S_C_PORT,       40, "port :", "port:", "puerto:")
+S(S_C_DIR,        40, "dossier LOCI (entree = explorer) :", "LOCI folder (enter = browse):", "carpeta LOCI (intro = explorar):")
+S(S_C_ROOT,       40, "(racine du flash)", "(flash root)", "(raiz del flash)")
+S(S_C_PASS,       40, "mot de passe zones reservees :", "password for reserved areas:", "clave de las zonas reservadas:")
+S(S_C_NONE,       40, "(aucun)", "(none)", "(ninguna)")
+S(S_C_LANG,       40, "langue (espace = changer) :", "language (space = change):", "idioma (espacio = cambiar):")
+S(S_K_CFG,        40, "entree = champ suivant   echap = annuler", "enter = next field   esc = cancel", "intro = campo siguiente  esc = cancelar")
+S(S_SAVED,        40, "enregistre dans PROPHET.CFG - b retour", "saved to PROPHET.CFG - b back", "guardado en PROPHET.CFG - b volver")
+S(S_APPLIED,      40, "applique (CFG non ecrit) - b retour", "applied (CFG not written) - b back", "aplicado (CFG no escrito) - b volver")
+S(S_CANCELLED,    40, "annule - b retour", "cancelled - b back", "cancelado - b volver")
+S(S_LNG_MISSING,  40, "fichier de langue absent : francais", "language file missing: French", "falta el archivo de idioma: frances")
+S(S_P_FILE,       10, "fichier ", "file ", "archivo ")
+S(S_P_VERIFY,     21, "verification CRC-32 ", "CRC-32 check ", "verificacion CRC-32 ")
+S(S_P_DOWNLOAD,   16, "telechargement ", "downloading ", "descargando ")
+S(S_P_RECEIVED,   10, "recu ", "received ", "recibido ")
+S(S_T_HELP,       24, "aide", "help", "ayuda")
+S(S_HELP,        900,
+  "fleches ou h/j/k/l : choisir\n"
+  "entree : ouvrir     b : retour\n"
+  ", . : onglet precedent / suivant\n"
+  "n/p : page suivante / precedente\n"
+  "v : grille / liste compacte\n"
+  "s : chercher (titre, auteur)\n"
+  "c : configuration (serveur, dossier, mot de passe, langue)\n"
+  "q : retour au BASIC\n\n"
+  "Fiche : g telecharge sur le LOCI (verifie par CRC-32), l lance : cassette montee + CLOAD\"\" ou disquette + demarrage Microdisc.\n\n"
+  "Reglages : PROPHET.CFG sur le LOCI. Marqueurs de telechargement : .prophet/ dans le dossier.\n\n"
+  "ProphetOric " VERSION " - prophet.3617.fr",
+  "arrows or h/j/k/l: choose\n"
+  "enter: open     b: back\n"
+  ", . : previous / next tab\n"
+  "n/p: next / previous page\n"
+  "v: card grid / compact list\n"
+  "s: search (title, author)\n"
+  "c: settings (server, folder, password, language)\n"
+  "q: back to BASIC\n\n"
+  "Sheet: g downloads to the LOCI (checked by CRC-32), l launches: tape mounted + CLOAD\"\" or disk + Microdisc boot.\n\n"
+  "Settings: PROPHET.CFG on the LOCI. Download markers: .prophet/ in the folder.\n\n"
+  "ProphetOric " VERSION " - prophet.3617.fr",
+  "flechas o h/j/k/l: elegir\n"
+  "intro: abrir     b: volver\n"
+  ", . : pestana anterior / siguiente\n"
+  "n/p: pagina siguiente / anterior\n"
+  "v: cuadricula / lista compacta\n"
+  "s: buscar (titulo, autor)\n"
+  "c: configuracion (servidor, carpeta, clave, idioma)\n"
+  "q: volver al BASIC\n\n"
+  "Ficha: g descarga al LOCI (verificado por CRC-32), l lanza: cinta montada + CLOAD\"\" o disco + arranque Microdisc.\n\n"
+  "Ajustes: PROPHET.CFG en el LOCI. Marcadores de descarga: .prophet/ en la carpeta.\n\n"
+  "ProphetOric " VERSION " - prophet.3617.fr")
+S(S_K_ANYKEY,     40, "une touche = retour", "any key = back", "una tecla = volver")
+S(S_TAB_ALL,      12, "tous", "all", "todos")
+S(S_TAB_BETA,     12, "beta", "beta", "beta")
+S(S_EN_DEV,        6, "EN DEV", "IN DEV", "DESARR")
+S(S_PAGE,         10, "page ", "page ", "pagina ")
+S(S_PROG,         10, " prog.", " prog.", " prog.")
+S(S_EMPTY,        40, "  (aucun programme)", "  (no program)", "  (ningun programa)")
+S(S_K_SEARCHRES,  40, "fleches entree n/p v b=retour ?", "arrows enter n/p v b=back ?", "flechas intro n/p v b=volver ?")
+S(S_K_MAIN,       40, "fleches entree ,. n/p s v c ? q", "arrows enter ,. n/p s v c ? q", "flechas intro ,. n/p s v c ? q")
+S(S_T_SEARCH,     24, "recherche", "search", "busqueda")
+S(S_T_CATALOGUE,  24, "catalogue", "catalogue", "catalogo")
+S(S_DEV_MARK,      6, " [dev]", " [dev]", " [dev]")
+S(S_S_PROMPT,     40, "mot a chercher (titre, auteur) :", "word to search (title, author):", "palabra a buscar (titulo, autor):")
+S(S_K_SPROMPT,    40, "entree = chercher   echap = annuler", "enter = search   esc = cancel", "intro = buscar   esc = cancelar")
+S(S_INSTALLED,    40, "deja telecharge (identique)", "already downloaded (identical)", "ya descargado (identico)")
+S(S_K_BACK,       40, "b retour", "b back", "b volver")
+S(S_K_INSTALLED,  40, "l lancer   g retelecharger   b retour", "l launch   g download again   b back", "l lanzar  g volver a bajar  b volver")
+S(S_K_INFO,       40, "g telecharger sur le LOCI   b retour", "g download to the LOCI   b back", "g descargar al LOCI   b volver")
+S(S_T_INFO,       24, "fiche", "sheet", "ficha")
+S(S_BANNER,       18, " EN DEVELOPPEMENT ", " WORK IN PROGRESS ", " EN DESARROLLO ")
+S(S_BY,            6, "par : ", "by: ", "por: ")
+S(S_FILES_OPEN,   12, "fichiers (", "files (", "archivos (")
+S(S_REQUIRES,     36, "! peut ne pas fonctionner sans : ", "! may not work without: ", "! puede no funcionar sin: ")
+S(S_FILES_ERR,    11, "fichiers : ", "files: ", "archivos: ")
+S(S_DONE,         11, "termine : ", "done: ", "terminado: ")
+S(S_N_FILES,      12, " fichier(s)", " file(s)", " archivo(s)")
+S(S_N_ZIP,        20, " fich. (zip ignore)", " (zip skipped)", " (zip omitido)")
+S(S_K_LAUNCH,      9, " l=lancer", " l=launch", " l=lanzar")
+S(S_K_BACK2,       9, " b=retour", " b=back", " b=volver")
+S(S_OK_CRC,       40, "OK : empreintes CRC-32 verifiees", "OK: CRC-32 checksums verified", "OK: sumas CRC-32 verificadas")
+S(S_OK_NOCRC,     40, "OK, non verifie (serveur sans CRC)", "OK, not verified (no server CRC)", "OK, sin verificar (servidor sin CRC)")
+S(S_FAILED,        9, "echec : ", "failed: ", "fallo: ")
+S(S_K_RETRY,      40, "g reessayer   b retour", "g retry   b back", "g reintentar   b volver")
+S(S_MNT_DSK_ERR,  40, "montage disquette impossible", "cannot mount the disk", "no se puede montar el disco")
+S(S_DSK_MOUNTED,  40, "Disquette montee en A :", "Disk mounted in A:", "Disco montado en A:")
+S(S_BOOTING,      40, "Demarrage...", "Booting...", "Arrancando...")
+S(S_BOOT_ERR,     40, "MIA_BOOT refuse", "MIA_BOOT refused", "MIA_BOOT rechazado")
+S(S_MNT_TAP_ERR,  40, "montage cassette impossible", "cannot mount the tape", "no se puede montar la cinta")
+S(S_TAP_MOUNTED,  40, "Cassette montee sur le LOCI :", "Tape mounted on the LOCI:", "Cinta montada en el LOCI:")
+S(S_TYPE_CLOAD,   40, "Tapez  CLOAD\"\"  pour charger.", "Type  CLOAD\"\"  to load.", "Escriba  CLOAD\"\"  para cargar.")
+S(S_E_NOFILES,    31, "fichiers introuvables", "files not found", "archivos no encontrados")
+S(S_E_BADLIST,    31, "liste de fichiers invalide", "invalid file list", "lista de archivos invalida")
+S(S_E_NOLOCI,     31, "pas de LOCI (stockage)", "no LOCI (storage)", "sin LOCI (almacenamiento)")
+S(S_E_EMPTYLIST,  31, "liste de fichiers vide", "empty file list", "lista de archivos vacia")
+S(S_E_LONGNAME,   31, "nom de fichier trop long", "file name too long", "nombre de archivo muy largo")
+S(S_E_REFUSED,    40, "fichier refuse par le LOCI (dossier ?)", "file refused by the LOCI (folder?)", "archivo rechazado por el LOCI (carpeta?)")
+S(S_E_INCOMPLETE, 31, "fichier incomplet", "incomplete file", "archivo incompleto")
+S(S_E_404FILE,    31, "fichier introuvable", "file not found", "archivo no encontrado")
+S(S_E_DLREFUSED,  31, "telechargement refuse", "download refused", "descarga rechazada")
+S(S_E_RESUME,     31, "reprise impossible", "cannot resume", "no se puede reanudar")
+S(S_E_CRC,        31, "EMPREINTE DIFFERENTE (garde)", "CHECKSUM MISMATCH (kept)", "SUMA DIFERENTE (guardado)")
+S(S_E_ATZ,        31, "pas de modem (ATZ)", "no modem (ATZ)", "sin modem (ATZ)")
+S(S_E_ATD,        31, "connexion refusee (ATD)", "connection refused (ATD)", "conexion rechazada (ATD)")
+S(S_E_NOREPLY,    31, "pas de reponse", "no reply", "sin respuesta")
+S(S_E_BADHTTP,    31, "reponse HTTP invalide", "invalid HTTP reply", "respuesta HTTP invalida")
+S(S_E_WRITE,      31, "ecriture impossible", "write failed", "escritura imposible")

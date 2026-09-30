@@ -3,6 +3,9 @@
 #include "http.h"
 #include "download.h"
 #include "loci.h"
+#include "lang.h"
+
+char cfg_lang[3];
 
 #define CFG_NAME "PROPHET.CFG"
 
@@ -17,7 +20,7 @@ unsigned char config_load(void)
     loci_close((unsigned char)fd);
     if (n <= 0) return 0;
     raw[n] = 0;
-    for (p = raw; *p && line < 4; ++line) {
+    for (p = raw; *p && line < 5; ++line) {
         q = strchr(p, '\n');
         if (q) *q++ = 0; else q = p + strlen(p);
         if (*p && p[strlen(p) - 1] == '\r') p[strlen(p) - 1] = 0;
@@ -26,6 +29,7 @@ unsigned char config_load(void)
         case 1: if (*p && strlen(p) < sizeof http_port) strcpy(http_port, p); break;
         case 2: if (strlen(p) < sizeof dl_dir) strcpy(dl_dir, p); break;
         case 3: if (strlen(p) < sizeof http_pass) strcpy(http_pass, p); break;
+        case 4: if (strlen(p) == 2) strcpy(cfg_lang, p); break;
         }
         p = q;
     }
@@ -38,6 +42,7 @@ unsigned char config_save(void)
     if (!loci_present()) return 0;
     strcpy(raw, http_host); strcat(raw, "\n"); strcat(raw, http_port); strcat(raw, "\n");
     strcat(raw, dl_dir); strcat(raw, "\n"); strcat(raw, http_pass); strcat(raw, "\n");
+    strcat(raw, lang_code); strcat(raw, "\n");
     fd = loci_open(CFG_NAME, LOCI_O_WRONLY | LOCI_O_CREAT | LOCI_O_TRUNC);
     if (fd < 0) return 0;
     n = loci_write((unsigned char)fd, (const unsigned char *)raw, (unsigned char)strlen(raw));

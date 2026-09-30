@@ -5,6 +5,7 @@
  */
 #include <string.h>
 #include "http.h"
+#include "lang.h"
 #include "version.h"
 #include "serial.h"
 #include "at_modem.h"
@@ -125,7 +126,7 @@ static unsigned char connect_modem(void)
         if (!at_wait_response("OK", 3000)) {
             at_hangup();                          /* modem resté en ligne (OricTel) */
             at_send("ATZ");
-            if (!at_wait_response("OK", 3000)) { http_error = "pas de modem (ATZ)"; return 0; }
+            if (!at_wait_response("OK", 3000)) { http_error = T(S_E_ATZ); return 0; }
         }
         modem_ready = 1;
     }
@@ -139,7 +140,7 @@ static unsigned char connect_modem(void)
         if (at_wait_response("CONNECT", 20000)) return 1;
         delay_ms(3000);
     }
-    http_error = "connexion refusee (ATD)";
+    http_error = T(S_E_ATD);
     return 0;
 }
 
@@ -167,10 +168,10 @@ static unsigned char request(const char *path, const char *range)
 
     hdr_reset();
     for (;;) {
-        if (!rx_byte(&b, RX_IDLE_TIMEOUT_MS)) { http_error = "pas de reponse"; at_hangup(); return 0; }
+        if (!rx_byte(&b, RX_IDLE_TIMEOUT_MS)) { http_error = T(S_E_NOREPLY); at_hangup(); return 0; }
         if (hdr_feed(b)) break;
     }
-    if (!hvalid) { http_error = "reponse HTTP invalide"; at_hangup(); return 0; }
+    if (!hvalid) { http_error = T(S_E_BADHTTP); at_hangup(); return 0; }
     return 1;
 }
 
@@ -251,7 +252,7 @@ unsigned char http_get_stream(const char *path, const char *range, http_sink sin
             }
             remaining = chunk;
         }
-        if (chunk && !sink(block, chunk)) { http_error = "ecriture impossible"; at_hangup(); return 0; }
+        if (chunk && !sink(block, chunk)) { http_error = T(S_E_WRITE); at_hangup(); return 0; }
         if (chunk == 128) memcpy(prev, block + 112, 16);
         *len += chunk;
         remaining -= chunk;

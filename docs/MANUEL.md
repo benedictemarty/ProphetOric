@@ -24,7 +24,8 @@ Sans matériel, tout fonctionne dans l'émulateur **Phosphoric** (voir §7).
 
 ## 2. Installation
 
-1. Copiez `prophet.tap` sur le stockage du LOCI (clé USB ou flash).
+1. Copiez `prophet.tap` sur le stockage du LOCI (clé USB ou flash), et, pour
+   l'anglais ou l'espagnol, `EN.LNG` / `ES.LNG` à côté (§6).
 2. Dans le menu du LOCI, montez `prophet.tap` comme cassette, puis en BASIC :
    `CLOAD""` — le programme démarre seul.
 3. Au premier lancement, ProphetOric contacte `prophet.3617.fr:8998` et
@@ -125,7 +126,7 @@ tard depuis le menu du LOCI sans repasser par ProphetOric.
 
 ![configuration](img/07-configuration.png)
 
-Cinq champs, `entrée` passe au suivant, `échap` annule tout :
+Six champs, `entrée` passe au suivant, `échap` annule tout :
 
 1. **serveur** : hôte ou adresse IP (`prophet.3617.fr`).
 2. **connexion** : `HTTP 8998` ou `TLS 443 (modem)` — espace ou `j`/`k`
@@ -142,10 +143,19 @@ Cinq champs, `entrée` passe au suivant, `échap` annule tout :
 5. **mot de passe** de la zone réservée : sans lui, seuls les programmes
    publics sont visibles ; avec lui, tout le catalogue Oric apparaît.
    (Demandez‑le à l'administrateur du serveur.)
+6. **langue** : `fr`, `en` ou `es` — espace pour changer, `entrée` pour
+   valider. Le français est intégré au programme ; l'anglais et l'espagnol
+   sont lus dans `EN.LNG` / `ES.LNG` (fournis avec `prophet.tap` dans le
+   paquet Prophet), cherchés à côté de `PROPHET.CFG` puis dans le dossier de
+   téléchargement. Fichier absent, ou d'une autre version de ProphetOric :
+   « fichier de langue absent : francais » et l'interface reste en français.
+   Les écrans « materiel absent » / « LOCI absent », affichés avant la
+   lecture de la configuration, sont toujours en français.
 
 La configuration est enregistrée dans `PROPHET.CFG` à la racine du volume de
-démarrage du LOCI (quatre lignes : serveur, port, dossier, mot de passe) et
-relue à chaque lancement. Le fichier peut aussi être écrit depuis un PC.
+démarrage du LOCI (cinq lignes : serveur, port, dossier, mot de passe,
+langue ; un fichier de quatre lignes des versions précédentes reste valable)
+et relue à chaque lancement. Le fichier peut aussi être écrit depuis un PC.
 
 ## 7. Sans matériel : Phosphoric
 

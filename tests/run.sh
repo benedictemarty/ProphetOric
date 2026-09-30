@@ -22,7 +22,7 @@ scenario() {   # nom | frappes (--type-keys, après le chargement) | cycles de c
     want "$name" || return 0
     rm -rf "$OUT/flash_$name"; mkdir -p "$OUT/flash_$name"          # flash root du LOCI (0:) propre à chaque scénario
     [ -f "$OUT/cfg_$name" ] && cp "$OUT/cfg_$name" "$OUT/flash_$name/PROPHET.CFG"
-    [ -n "${SEED:-}" ] && cp $SEED "$OUT/flash_$name/"              # fichiers pré-semés dans le flash (ex. microdis.rom)
+    [ -n "${SEED:-}" ] && mkdir -p "$OUT/flash_$name/${LANGDIR:-}" && cp $SEED "$OUT/flash_$name/${LANGDIR:-}"   # fichiers pré-semés (ex. microdis.rom), LANGDIR = sous-dossier
     if [ -n "$keys" ]; then
         "$EMU" -r "$ROM" -t "$TAP" -f --loci --loci-usb none --loci-flash "$OUT/flash_$name" --serial picowifi:Test ${EXTRA:---serial-buffer 4096} --headless --realtime \
             --cycles $((at + 100000)) --type-keys "$keys" --screenshot-text-at "$at:$OUT/$name.txt" >"$OUT/$name.log" 2>&1
@@ -94,17 +94,28 @@ else echo "SKIP dsk_boot (LONG=1 : 1 Mo a 9600 bauds = 18 min ; SEDO40u.DSK + ta
 printf '127.0.0.1\n18994\n\nsesame-test\n' > "$OUT/cfg_secret"
 scenario secret ""                  16000000
 # écran de configuration : c, hôte, port, dossier JEUX, mot de passe → PROPHET.CFG (4 lignes) et dossier utilisé
-scenario config "12000000:c\n\n\nnjeux\n\n sesame-test\nb\p5\n\p5g" 60000000   # hote, HTTP, port, explorateur : n(ouveau) jeux, entrer, espace ; mot de passe
+scenario config "12000000:c\n\n\nnjeux\n\n sesame-test\n\nb\p5\n\p5g" 60000000   # hote, HTTP, port, explorateur : n(ouveau) jeux, entrer, espace ; mot de passe ; langue (fr)
 # (le clavier émulé tape en minuscules : dossier « jeux » ; avec le mot de passe, Dune Explorer est 1er de la liste)
-if ! want config; then :; elif [ "$(cat "$OUT/flash_config/PROPHET.CFG" 2>/dev/null)" = "$(printf '127.0.0.1\n18994\njeux\nsesame-test')" ] \
+if ! want config; then :; elif [ "$(cat "$OUT/flash_config/PROPHET.CFG" 2>/dev/null)" = "$(printf '127.0.0.1\n18994\njeux\nsesame-test\nfr')" ] \
    && cmp -s "$OUT/flash_config/jeux/dune.tap" tests/repo/oric-games/dune/dune.tap; then echo "PASS config_file (PROPHET.CFG ecrit, jeux/dune.tap = paquet protege)"
 else echo "FAIL config_file"; cat "$OUT/flash_config/PROPHET.CFG" 2>/dev/null; ls -R "$OUT/flash_config" | head; fail=1; fi
 # volumes : une clé USB émulée (--loci-usb) → l'explorateur commence par les volumes ; « 1: » choisi,
 # dossier jeux créé dessus, téléchargement dans N:jeux (N = numéro attribué par l'émulateur), config (flash 0:) = "N:jeux"
 rm -rf "$OUT/usb1"; mkdir -p "$OUT/usb1"
-EXTRA="--serial-buffer 4096 --loci-usb $OUT/usb1" scenario volumes "12000000:c\n\n\nj\nnjeux\n\n sesame-test\nb\p5\n\p5g" 60000000
+EXTRA="--serial-buffer 4096 --loci-usb $OUT/usb1" scenario volumes "12000000:c\n\n\nj\nnjeux\n\n sesame-test\n\nb\p5\n\p5g" 60000000
 if ! want volumes; then :; elif sed -n 3p "$OUT/flash_volumes/PROPHET.CFG" 2>/dev/null | grep -qE "^[1-4]:jeux$" && cmp -s "$OUT/usb1/jeux/dune.tap" tests/repo/oric-games/dune/dune.tap; then echo "PASS volumes (volume USB choisi dans l'explorateur, fichier sur la cle USB, config sur le flash)"
 else echo "FAIL volumes"; cat "$OUT/flash_volumes/PROPHET.CFG" 2>/dev/null; ls -R "$OUT/usb1" | head -5; grep -v "^$" "$OUT/volumes.txt" | tail -3; fail=1; fi
+# langues : EN.LNG / ES.LNG (build/, générés de src/strings.def) sur le flash, 5e ligne de PROPHET.CFG
+printf '127.0.0.1\n18994\n\n\nen\n' > "$OUT/cfg_lang_en"
+SEED="build/EN.LNG" scenario lang_en "" 16000000                     # écran principal en anglais
+printf '127.0.0.1\n18994\njeux\n\nes\n' > "$OUT/cfg_lang_es"
+LANGDIR=jeux SEED="build/ES.LNG" scenario lang_es "12000000:\n" 24000000   # fiche en espagnol, ES.LNG dans le dossier de téléchargement
+printf '127.0.0.1\n18994\n\n\nen\n' > "$OUT/cfg_lang_missing"
+scenario lang_missing "" 13000000                                     # EN.LNG absent : message, on reste en français
+# choix de la langue dans c : espace → en, entrée ; message et PROPHET.CFG en anglais
+SEED="build/EN.LNG" scenario config_lang "12000000:c\n\n\n \n \n" 30000000
+if ! want config_lang; then :; elif sed -n 5p "$OUT/flash_config_lang/PROPHET.CFG" 2>/dev/null | grep -qx en && tail -1 "$OUT/config_lang.txt" | grep -q "saved to PROPHET.CFG"; then echo "PASS config_lang_file (langue en enregistree, interface en anglais)"
+else echo "FAIL config_lang_file"; cat "$OUT/flash_config_lang/PROPHET.CFG" 2>/dev/null; tail -2 "$OUT/config_lang.txt"; fail=1; fi
 # reprise : un relais coupe la première réponse de fichier après 5 000 octets (le modem émet NO CARRIER) → le client
 # l'écarte, se repositionne (LSEEK) et reprend par Range: bytes=5000- ; zorg.tap (20 Ko) doit être identique
 kill $PD 2>/dev/null; sleep 0.3

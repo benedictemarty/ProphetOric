@@ -1,4 +1,4 @@
-ProphetOric 0.8.0           LOCI absent
+ProphetOric 0.9.0           LOCI absent
 
 
 Interface serie trouvee, mais pas l'API

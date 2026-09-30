@@ -1,0 +1,28 @@
+ProphetOric 0.9.0         configuration
+
+serveur (hote ou IP) :
+127.0.0.1
+
+connexion :
+> HTTP 8998      TLS 443 (modem)
+
+port :
+18994
+
+dossier LOCI (entree = explorer) :
+(racine du flash)
+
+mot de passe zones reservees :
+_
+
+langue (espace = changer) :
+  fr   > en     es
+
+
+
+
+
+
+
+
+saved to PROPHET.CFG - b back
