@@ -1,16 +1,14 @@
-ProphetOric 0.7.1            categories
-
-> oric-games (2)
-
+ProphetOric 0.8.0             catalogue
+ tous  oric-games  beta
 
 
+     Z         B         H
+     Z         B         H
 
+  Zorg      Beta      Hello
+            Test      Tape
 
-
-
-
-
-
+            EN DEV
 
 
 
@@ -22,7 +20,9 @@ ProphetOric 0.7.1            categories
 
 
 
+ Zorg
+ Zorg
 
+page 1/1  3 prog.
 
-
-j/k entree=ouvrir s=chercher c=config ?
+fleches entree ,. n/p s v c ? q

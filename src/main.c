@@ -17,18 +17,24 @@
 #include "loci.h"
 #include "version.h"
 
-#define IPP 16                       /* programmes par page (16 lignes de liste) */
 #define ROWS 28
 #define COLS 40
+#define SCR ((unsigned char *)0xBB80)  /* écran TEXT : attributs série écrits directement */
+#define MAX_CATS 16
+#define MAX_DEV 16
 
-static char body[3072];              /* réponse courante (parsée en place) */
-static struct cli_cat cats[8];
+static char body[2048];              /* réponse courante (parsée en place) */
+static struct cli_cat cats[MAX_CATS];
 static unsigned char ncats;
+static char cat_names[MAX_CATS][18];  /* copies : cats[].name pointe dans body, écrasé à chaque requête */
 static struct cli_listing listing;
 static struct cli_info info;
-static char cat_name[24];
-static char search_key[24];           /* "" = liste de catégorie, sinon /search/<clé> */
+static char search_key[24];           /* "" = onglet, sinon /search/<clé> */
+static unsigned char tab;             /* 0 = « tous », 1..ncats = catégorie */
+static unsigned char view_list;       /* 0 = grille de cartes (8), 1 = liste compacte (16) */
 static unsigned int page;
+static unsigned int dev_hash[MAX_DEV]; /* ids de la catégorie en-developpement (empreinte 16 bits) */
+static unsigned char ndev;
 
 /* Écrit une ligne complète (tronquée/complétée à 40 colonnes). Jamais 40 cputc
  * suivis d'autre chose : conio (cc65 atmos) incrémente CURS_Y après la 40e colonne
@@ -72,14 +78,15 @@ static unsigned char wrap(unsigned char y, const char *s)
     return y;
 }
 
+static unsigned char arrows_move;    /* 1 : flèches gauche/droite = h/l (grille), sinon b/n */
 static unsigned char key(void)
 {
     unsigned char c = cgetc();
     if (c >= 'A' && c <= 'Z') c += 32;
     if (c == CH_CURS_DOWN) c = 'j';
     if (c == CH_CURS_UP) c = 'k';
-    if (c == CH_CURS_LEFT) c = 'b';
-    if (c == CH_CURS_RIGHT) c = 'n';
+    if (c == CH_CURS_LEFT) c = arrows_move ? 'h' : 'b';
+    if (c == CH_CURS_RIGHT) c = arrows_move ? 'l' : 'n';
     if (c == CH_ENTER || c == '\r') c = '\n';
     return c;
 }
@@ -310,9 +317,11 @@ static void dl_progress_cb(const char *name, unsigned long bytes)
 static void help_screen(void)
 {
     title("aide");
-    wrap(2, "j/k ou fleches : choisir\n"
+    wrap(2, "fleches ou h/j/k/l : choisir\n"
             "entree : ouvrir     b : retour\n"
+            ", . : onglet precedent / suivant\n"
             "n/p : page suivante / precedente\n"
+            "v : grille / liste compacte\n"
             "s : chercher (titre, auteur)\n"
             "c : configuration (serveur, dossier, mot de passe)\n"
             "q : retour au BASIC\n"
@@ -328,58 +337,152 @@ static void help_screen(void)
     cgetc();
 }
 
-static void draw_cats(unsigned char sel)
+/* --- écran principal : onglets de catégories, grille de cartes 4×2 ou liste compacte --- */
+
+static unsigned int hash16(const char *t)
 {
-    unsigned char i;
-    char l[COLS + 1];
-    title("categories");
-    for (i = 0; i < ncats; ++i) {
-        unsigned char k = 0;
-        l[k++] = i == sel ? '>' : ' '; l[k++] = ' ';
-        strcpy(l + k, cats[i].name); k = (unsigned char)strlen(l);
-        l[k++] = ' '; l[k++] = '(';
-        { unsigned int v = cats[i].count; char d[6]; unsigned char m = 0;
-          do { d[m++] = '0' + v % 10; v /= 10; } while (v);
-          while (m) l[k++] = d[--m]; }
-        l[k++] = ')'; l[k] = 0;
-        line(2 + i, l);
-    }
-    status("j/k entree=ouvrir s=chercher c=config ?");
+    unsigned int h = 0;
+    while (*t) h = h * 31 + (unsigned char)*t++;
+    return h;
 }
 
-static void draw_list(unsigned char sel)
+static unsigned char is_dev(const char *id)
+{
+    unsigned int h = hash16(id); unsigned char i;
+    for (i = 0; i < ndev; ++i) if (dev_hash[i] == h) return 1;
+    return 0;
+}
+
+/* texte brut à l'écran (sans conio : les attributs série < 32 passent tels quels) */
+static void put(unsigned char x, unsigned char y, const char *t, unsigned char n, unsigned char inv)
+{
+    unsigned char *p = SCR + y * COLS + x;
+    while (n-- && *t) *p++ = (unsigned char)*t++ | inv;
+}
+
+static const char *tab_label(unsigned char t)
+{
+    if (!t) return "tous";
+    return strcmp(cat_names[t - 1], "en-developpement") ? cat_names[t - 1] : "beta";   /* comme ProphetGui */
+}
+
+/* ligne 1 : onglets ; l'onglet courant en vidéo inverse, < > si ça déborde */
+static void draw_tabs(void)
+{
+    unsigned char start = 0, x, t, w;
+    line(1, "");
+    if (search_key[0]) {
+        char l[COLS + 1]; strcpy(l, " ? "); strncat(l, search_key, 30); strcat(l, " ");
+        put(0, 1, l, COLS, 0x80); return;
+    }
+    for (;;) {                                  /* premier onglet affiché : le courant doit tenir */
+        w = start ? 1 : 0;
+        for (t = start; t <= tab; ++t) w += (unsigned char)strlen(tab_label(t)) + 2;
+        if (w <= COLS - 1 || start == tab) break;
+        ++start;
+    }
+    x = 0;
+    if (start) { put(0, 1, "<", 1, 0); x = 1; }
+    for (t = start; t <= ncats; ++t) {
+        const char *l = tab_label(t); unsigned char n = (unsigned char)strlen(l);
+        if (x + n + 2 > COLS - 1) { put(COLS - 1, 1, ">", 1, 0); break; }
+        put(x, 1, " ", 1, t == tab ? 0x80 : 0); put(x + 1, 1, l, n, t == tab ? 0x80 : 0); put(x + 1 + n, 1, " ", 1, t == tab ? 0x80 : 0);
+        x += n + 2;
+    }
+}
+
+/* Carte i (10 colonnes × 9 lignes) : papier/encre en attributs série, initiale en double
+ * hauteur (ligne paire = moitié haute, ligne impaire = moitié basse, cf. ULA), titre sur
+ * 2 lignes de 7 coupées aux espaces, bandeau « EN DEV » rouge sur blanc. Carte choisie :
+ * fond blanc, encre noire, bandes de sa couleur en haut et en bas. */
+static void draw_card(unsigned char i, unsigned char sel)
+{
+    unsigned char cx = (i & 3) * 10, cy = 3 + (i >> 2) * 10, r, k, paper = 0, ink = 7, cut = 7;
+    const char *t = i < listing.count ? listing.item[i].title : 0;
+    unsigned char dev = t && is_dev(listing.item[i].id), n = t ? (unsigned char)strlen(t) : 0;
+    if (t) {
+        paper = 1 + hash16(t) % 6; ink = (paper == 2 || paper == 3 || paper == 6) ? 0 : 7;
+        if (n <= 7) cut = n;                                               /* une seule ligne */
+        else { for (k = 7; k && t[k] != ' '; --k) ; if (k) cut = k; }      /* coupure au dernier espace */
+    }
+    for (r = 0; r < 9; ++r) {
+        unsigned char *p = SCR + (cy + r) * COLS + cx;
+        unsigned char band = i == sel && (r == 0 || r == 8);
+        p[0] = 0x10 | (i == sel && !band ? 7 : paper); p[1] = i == sel && !band ? 0 : ink;
+        for (k = 2; k < 9; ++k) p[k] = ' ';
+        p[9] = 0x10;                              /* intervalle noir */
+        if (!t) continue;
+        if (r == 1 || r == 2) {                   /* initiale, double hauteur */
+            const char *c = t; while (*c == ' ') ++c;
+            p[2] = 0x0A; p[5] = (unsigned char)((*c >= 'a' && *c <= 'z') ? *c - 32 : *c);
+        }
+        if (r == 4) for (k = 0; k < cut && k < n; ++k) p[2 + k] = (unsigned char)t[k];
+        if (r == 5) { const char *u = t + cut; while (*u == ' ') ++u; for (k = 0; k < 7 && u[k]; ++k) p[2 + k] = (unsigned char)u[k]; }
+        if (r == 7 && dev) { p[0] = 0x17; p[1] = 1; put(cx + 2, cy + r, "EN DEV", 6, 0); }
+    }
+}
+
+static void draw_page_line(const char *keys)
+{
+    char s[COLS + 1];
+    strcpy(s, "page "); cat_uint(s, page + 1); strcat(s, "/"); cat_uint(s, listing.pages ? listing.pages : 1);
+    strcat(s, "  "); cat_uint(s, listing.total); strcat(s, " prog."); line(ROWS - 3, s);
+    status(keys);
+}
+
+static void draw_main(unsigned char sel)
 {
     unsigned char i;
-    char l[COLS + 1];
-    title(cat_name);
-    for (i = 0; i < listing.count; ++i) {
-        l[0] = i == sel ? '>' : ' '; l[1] = ' ';
-        strncpy(l + 2, listing.item[i].title, COLS - 2); l[COLS] = 0;
-        line(2 + i, l);
+    title(search_key[0] ? "recherche" : "catalogue");
+    draw_tabs();
+    if (view_list) {
+        char l[COLS + 1];
+        for (i = 0; i < listing.count && i < 16; ++i) {
+            l[0] = i == sel ? '>' : ' '; l[1] = ' ';
+            strncpy(l + 2, listing.item[i].title, COLS - 8); l[COLS - 6] = 0;
+            if (is_dev(listing.item[i].id)) strcat(l, " [dev]");
+            line(3 + i, l);
+        }
+    } else {
+        for (i = 0; i < 8; ++i) draw_card(i, sel);
+        if (sel < listing.count) {                 /* titre de la carte choisie, double hauteur (22 paire) */
+            unsigned char *p = SCR + 22 * COLS;
+            p[0] = 0x0A; put(1, 22, listing.item[sel].title, COLS - 1, 0);
+            p += COLS; p[0] = 0x0A; put(1, 23, listing.item[sel].title, COLS - 1, 0);
+        }
     }
-    { char s[COLS + 1]; unsigned int v; char d[6]; unsigned char m, k = 0;
-      strcpy(s, "page "); k = 5; v = page + 1; m = 0;
-      do { d[m++] = '0' + v % 10; v /= 10; } while (v); while (m) s[k++] = d[--m];
-      s[k++] = '/'; v = listing.pages ? listing.pages : 1; m = 0;
-      do { d[m++] = '0' + v % 10; v /= 10; } while (v); while (m) s[k++] = d[--m];
-      strcpy(s + k, " j/k n/p entree=fiche b ?"); status(s); }
+    if (!listing.count) line(5, "  (aucun programme)");
+    draw_page_line(search_key[0] ? "fleches entree n/p v b=retour ?" : "fleches entree ,. n/p s v c ? q");
 }
 
 static unsigned char load_list(void)
 {
     char path[80];
-    char d[6]; unsigned char m = 0, k; unsigned int v = page;
     if (search_key[0]) { strcpy(path, "/search/"); strcat(path, search_key); }
-    else { strcpy(path, "/list/"); strcat(path, cat_name); }
-    strcat(path, "?platform=oric&sort=date&ord=desc&ipp=16&page=");   /* comme ProphetGui : les plus récents d'abord */
-    k = (unsigned char)strlen(path);
-    do { d[m++] = '0' + v % 10; v /= 10; } while (v); while (m) path[k++] = d[--m]; path[k] = 0;
+    else { strcpy(path, "/list/"); strcat(path, tab ? cat_names[tab - 1] : "all"); }
+    strcat(path, view_list ? "?platform=oric&sort=date&ord=desc&ipp=16&page=" : "?platform=oric&sort=date&ord=desc&ipp=8&page=");
+    cat_uint(path, page);                          /* comme ProphetGui : les plus récents d'abord */
     if (!fetch(path)) return 0;
     if (!cli_parse_listing(body, &listing)) { status("reponse inattendue"); return 0; }
     return 1;
 }
 
-/* bas de fiche : état du paquet (ligne ROWS-4) et touches */
+/* catégories (onglets) et ids de en-developpement (marqueur EN DEV) */
+static unsigned char load_cats(void)
+{
+    unsigned char i, has_dev = 0;
+    if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, MAX_CATS, &ncats)) return 0;
+    for (i = 0; i < ncats; ++i) {
+        strncpy(cat_names[i], cats[i].name, 17); cat_names[i][17] = 0;
+        if (!strcmp(cat_names[i], "en-developpement")) has_dev = 1;
+    }
+    if (tab > ncats) tab = 0;
+    ndev = 0;
+    if (has_dev && fetch("/list/en-developpement?platform=oric&ipp=16&page=0") && cli_parse_listing(body, &listing))
+        for (i = 0; i < listing.count && ndev < MAX_DEV; ++i) dev_hash[ndev++] = hash16(listing.item[i].id);
+    return 1;
+}
+
 static void info_keys(unsigned char installed)
 {
     line(ROWS - 4, installed ? "deja telecharge (identique)" : "");
@@ -400,6 +503,7 @@ static void info_screen(const char *id)
     dl_last_tap[0] = dl_last_dsk[0] = 0;
     installed = dl_nfiles && dl_installed(id);
     title("fiche");
+    if (is_dev(id)) { SCR[COLS] = 0x11; SCR[COLS + 1] = 7; put(2, 1, " EN DEVELOPPEMENT ", 18, 0); }   /* bandeau rouge */
     wrap_end = 5; y = wrap(2, info.title);
     if (info.author) { char s[COLS + 1]; strcpy(s, "par : "); strncat(s, info.author, COLS - 6); line(y++, s); }
     ++y;
@@ -428,7 +532,7 @@ static void info_screen(const char *id)
     for (;;) {
         unsigned char c = key();
         if (c == 'b') return;
-        if (c == '?' || c == 'h') { help_screen(); return; }
+        if (c == '?' || c == '/') { help_screen(); return; }
         if (c == 'g' && dl_nfiles) {
             unsigned char n;
             line(ROWS - 4, "");
@@ -464,30 +568,6 @@ static void info_screen(const char *id)
     }
 }
 
-static void list_screen(void)
-{
-    unsigned char sel = 0, c;
-    page = 0;
-    if (search_key[0]) { strcpy(cat_name, "? "); strncat(cat_name, search_key, 20); }
-    if (!load_list()) { cgetc(); return; }
-    for (;;) {
-        draw_list(sel);
-        c = key();
-        if (c == 'b' || c == 'q') return;
-        if (c == '?' || c == 'h') help_screen();
-        if (c == 'j' && sel + 1 < listing.count) ++sel;
-        if (c == 'k' && sel) --sel;
-        if (c == 'n' && page + 1 < listing.pages) { ++page; sel = 0; if (!load_list()) { cgetc(); return; } }
-        if (c == 'p' && page) { --page; sel = 0; if (!load_list()) { cgetc(); return; } }
-        if (c == '\n' && listing.count) {
-            char id[40];
-            strncpy(id, listing.item[sel].id, 39); id[39] = 0;
-            info_screen(id);
-            if (!load_list()) { cgetc(); return; }   /* body réutilisé : recharger la liste */
-        }
-    }
-}
-
 int main(void)
 {
     unsigned char sel = 0, c;
@@ -511,27 +591,48 @@ int main(void)
     }
     serial_init(ACIA_BASE_LOCI);
     config_load();                                   /* PROPHET.CFG sur le LOCI, sinon valeurs compilées */
-    if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; }
+    if (!load_cats()) { cgetc(); return 1; }
+    page = 0;
+    if (!load_list()) cgetc();
     for (;;) {
-        draw_cats(sel);
+        unsigned char per = view_list ? 16 : 8, reload = 0;
+        if (sel >= listing.count) sel = listing.count ? listing.count - 1 : 0;
+        arrows_move = 1;
+        draw_main(sel);
         c = key();
-        if (c == 'q') { clrscr(); return 0; }
-        if (c == '?' || c == 'h') help_screen();
+        arrows_move = 0;
+        if (c == 'q' && !search_key[0]) { clrscr(); return 0; }
+        if (c == '?' || c == '/') help_screen();
+        /* déplacement : grille (h/l ±1, j/k ±4, changement de page aux bords) ou liste (j/k ±1) */
+        if (c == 'l' || (c == 'j' && view_list)) {
+            if (sel + 1 < listing.count) ++sel;
+            else if (page + 1 < listing.pages) { ++page; sel = 0; reload = 1; }
+        }
+        if (c == 'h' || (c == 'k' && view_list)) {
+            if (sel) --sel;
+            else if (page) { --page; sel = per - 1; reload = 1; }
+        }
+        if (c == 'j' && !view_list) { if (sel + 4 < listing.count) sel += 4; else if (page + 1 < listing.pages) { ++page; sel &= 3; reload = 1; } }
+        if (c == 'k' && !view_list) { if (sel >= 4) sel -= 4; else if (page) { --page; sel += 4; reload = 1; } }
+        if (c == 'n' && page + 1 < listing.pages) { ++page; sel = 0; reload = 1; }
+        if (c == 'p' && page) { --page; sel = 0; reload = 1; }
+        if ((c == '.' || c == ']') && !search_key[0]) { tab = tab < ncats ? tab + 1 : 0; page = 0; sel = 0; reload = 1; }
+        if ((c == ',' || c == '[') && !search_key[0]) { tab = tab ? tab - 1 : ncats; page = 0; sel = 0; reload = 1; }
+        if (c == 'v') { view_list = !view_list; page = 0; sel = 0; reload = 1; }
+        if (c == 'b' && search_key[0]) { search_key[0] = 0; page = 0; sel = 0; reload = 1; }
         if (c == 's') {                                  /* recherche : /search/<clé> (titre, description, auteur) */
+            char k[24]; k[0] = 0;
             title("recherche"); line(2, "mot a chercher (titre, auteur) :"); status("entree = chercher   echap = annuler");
-            search_key[0] = 0;
-            if (edit_field(3, search_key, 22) && search_key[0]) list_screen();
-            search_key[0] = 0;
-            if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; }
+            if (edit_field(3, k, 22) && k[0]) { strcpy(search_key, k); page = 0; sel = 0; }
+            reload = 1;
         }
-        if (c == 'c') { config_screen(); if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; } }
-        if (c == 'j' && sel + 1 < ncats) ++sel;
-        if (c == 'k' && sel) --sel;
-        if (c == '\n' && ncats) {
-            strncpy(cat_name, cats[sel].name, 23); cat_name[23] = 0;
-            search_key[0] = 0;
-            list_screen();
-            if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; }
+        if (c == 'c') { config_screen(); if (!load_cats()) { cgetc(); return 1; } page = 0; sel = 0; reload = 1; }
+        if ((c == '\n' || c == ' ') && sel < listing.count) {
+            char id[40];
+            strncpy(id, listing.item[sel].id, 39); id[39] = 0;
+            info_screen(id);
+            reload = 1;                                  /* body réutilisé : recharger la liste */
         }
+        if (reload && !load_list()) cgetc();
     }
 }

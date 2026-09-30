@@ -1,13 +1,11 @@
-ProphetOric 0.7.1                ? zorg
-
-> Zorg
-
+ProphetOric 0.8.0             recherche
+ ? zorg
 
 
+     Z
+     Z
 
-
-
-
+  Zorg
 
 
 
@@ -22,7 +20,9 @@ ProphetOric 0.7.1                ? zorg
 
 
 
+ Zorg
+ Zorg
 
+page 1/1  1 prog.
 
-
-page 1/1 j/k n/p entree=fiche b ?
+fleches entree n/p v b=retour ?

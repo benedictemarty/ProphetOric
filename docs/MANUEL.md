@@ -38,15 +38,17 @@ touches disponibles ou message d'état.
 
 | Touche | Action |
 |---|---|
-| `j` / `k` (ou flèches bas/haut) | choisir dans une liste |
-| `entrée` | ouvrir (catégorie, programme) / valider un champ |
-| `b` (ou flèche gauche) | retour |
-| `n` / `p` (ou flèche droite) | page suivante / précédente |
+| flèches (ou `h` `j` `k` `l`) | choisir une carte (gauche, bas, haut, droite) ; aux bords, page voisine |
+| `,` / `.` (ou `[` / `]`) | onglet (catégorie) précédent / suivant |
+| `entrée` (ou `espace`) | ouvrir la fiche / valider un champ |
+| `b` | retour (fiche, recherche) |
+| `n` / `p` | page suivante / précédente |
+| `v` | grille de cartes ↔ liste compacte |
 | `s` | rechercher un programme (titre, auteur, description) |
 | `g` | télécharger le programme affiché (fiche) |
 | `l` | lancer le programme téléchargé |
 | `c` | configuration |
-| `?` (ou `h`) | aide (rappel des touches) |
+| `?` (ou `/`) | aide (rappel des touches) |
 | `échap` | annuler une saisie |
 | `q` | quitter (retour au BASIC) |
 
@@ -55,25 +57,35 @@ touche — l'Oric ne garde qu'une touche en attente pendant une requête.
 
 ## 4. Parcourir le catalogue
 
-![catégories](img/01-categories.png)
+![grille](img/01-grille.png)
 
-Les catégories de la plateforme Oric : `oric-games`, `oric-typeins`
-(listings de livres et magazines), `oric-utils`, `oric-demos`, `oric-misc`,
-plus `games` (programmes publiés directement sur Prophet). Le nombre entre
-parenthèses est le nombre de programmes. Les catégories `oric-*` ne sont
-visibles qu'avec le mot de passe de la zone réservée (§6).
+L'écran principal montre, en haut, les **onglets** : « tous », puis les
+catégories de la plateforme Oric (`oric-games`, `oric-typeins` — listings de
+livres et magazines —, `oric-utils`, `oric-demos`, `oric-misc`, `games`, et
+`beta` pour `en-developpement`). `,` et `.` passent d'un onglet à l'autre ; s'il
+y en a trop pour la ligne, `<` et `>` signalent les onglets cachés. Les
+catégories `oric-*` ne sont visibles qu'avec le mot de passe de la zone
+réservée (§6).
+
+Dessous, une **grille de 8 cartes** (les plus récents d'abord) : chaque carte a
+sa couleur, l'initiale du titre en grand et le titre. La carte choisie est
+blanche, bordée de sa couleur ; son titre complet s'affiche en grand sous la
+grille, avec « page a/b » et le nombre de programmes. Les programmes de la
+catégorie `en-developpement` (versions de travail) portent un bandeau
+**EN DEV**.
 
 ![liste](img/02-liste.png)
 
-Une catégorie = une liste de 16 programmes par page, les plus récents en
-premier ; `n` / `p` changent de page. `s` depuis les catégories ouvre une
-recherche : tapez un mot (sans espace), entrée — le résultat se parcourt
-comme une catégorie.
+`v` bascule vers une **liste compacte** de 16 titres par page (« [dev] »
+marque les versions de travail), pratique dans les grandes catégories ; `v`
+revient à la grille. `s` ouvre une recherche : tapez un mot (sans espace),
+entrée — le résultat se parcourt comme un onglet, `b` revient aux onglets.
 
 ![fiche](img/03-fiche.png)
 
 La fiche donne le titre, l'auteur, la description (repliée à 40 colonnes)
-et la liste des fichiers. Si l'auteur a déclaré des **composants
+et la liste des fichiers ; un bandeau rouge « EN DEVELOPPEMENT » signale une
+version de travail. Si l'auteur a déclaré des **composants
 minimums** (ex. `loci>=0.3.1`, `picowifi`), la fiche affiche « ! peut ne pas
 fonctionner sans : … » — simple avertissement, rien n'est vérifié sur votre
 Oric. Si le programme est **déjà téléchargé et identique** à celui du

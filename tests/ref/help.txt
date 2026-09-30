@@ -1,0 +1,28 @@
+ProphetOric 0.8.0                  aide
+
+fleches ou h/j/k/l : choisir
+entree : ouvrir     b : retour
+, . : onglet precedent / suivant
+n/p : page suivante / precedente
+v : grille / liste compacte
+s : chercher (titre, auteur)
+c : configuration (serveur, dossier, mot
+de passe)
+q : retour au BASIC
+Fiche : g telecharge sur le LOCI
+(verifie par CRC-32), l lance : cassette
+montee + CLOAD"" ou disquette +
+demarrage Microdisc.
+Reglages : PROPHET.CFG sur le LOCI.
+Marqueurs de telechargement : .prophet/
+dans le dossier.
+ProphetOric 0.8.0 - prophet.3617.fr
+
+
+
+
+
+
+
+
+une touche = retour

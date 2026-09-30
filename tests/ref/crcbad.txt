@@ -1,4 +1,4 @@
-ProphetOric 0.7.1                 fiche
+ProphetOric 0.8.0                 fiche
 
 Zorg
 par : Tansoft

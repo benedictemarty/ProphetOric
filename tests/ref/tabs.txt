@@ -1,9 +1,12 @@
 ProphetOric 0.8.0             catalogue
  tous  oric-games  beta
 
-> Zorg
-  Beta Test [dev]
-  Hello Tape
+
+     Z         H
+     Z         H
+
+  Zorg      Hello
+            Tape
 
 
 
@@ -17,12 +20,9 @@ ProphetOric 0.8.0             catalogue
 
 
 
+ Zorg
+ Zorg
 
-
-
-
-
-
-page 1/1  3 prog.
+page 1/1  2 prog.
 
 fleches entree ,. n/p s v c ? q

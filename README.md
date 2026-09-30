@@ -1,6 +1,6 @@
 # ProphetOric — client Prophet pour Oric (LOCI + modem Wi‑Fi)
 
-![catégories](docs/img/01-categories.png) ![fiche](docs/img/03-fiche.png)
+![grille](docs/img/01-grille.png) ![fiche](docs/img/03-fiche.png)
 
 Client du dépôt de programmes **Prophet** (`prophet.3617.fr`, serveur
 [Neo6502Prophet](../Neo6502Prophet)) pour **Oric 1 / Atmos** équipé du
@@ -8,8 +8,8 @@ Client du dépôt de programmes **Prophet** (`prophet.3617.fr`, serveur
 catalogue Oric (zone réservée, mot de passe), fiche, téléchargement du
 `.tap`/`.dsk` sur le stockage du LOCI, lancement.
 
-**État : 0.7.1, sprint 7** (`build/prophet.tap`, ~27 Ko) : catégories / recherche →
-liste paginée → fiche (fichiers, composants minimums, « déjà téléchargé ») → `g` télécharge sur le LOCI (tranches Range de 32 Ko, reprise sur coupure, barre de progression) et **vérifie chaque fichier par CRC‑32** → `l` monte la cassette
+**État : 0.8.0, sprint 8** (`build/prophet.tap`, ~29 Ko) : onglets de catégories / recherche →
+grille de cartes colorées (ou liste compacte `v`), bandeau EN DEV → fiche (fichiers, composants minimums, « déjà téléchargé ») → `g` télécharge sur le LOCI (tranches Range de 32 Ko, reprise sur coupure, barre de progression) et **vérifie chaque fichier par CRC‑32** → `l` monte la cassette
 (`CLOAD""`) ou démarre la disquette (`MIA_BOOT`) ; `PROPHET.CFG` et écran de
 configuration (`c` : hôte, HTTP/TLS, port, explorateur volumes → dossiers, mot de passe) ; ACIA à **9600 bauds**, vérifié avec l'anneau de 32 octets
 du firmware LOCI ; via le modem PicoWiFi émulé de Phosphoric (vraies sockets). Validation **en émulation uniquement**
@@ -20,7 +20,7 @@ make            # build/prophet.tap (prophet.3617.fr:8998)
 make run        # Phosphoric SDL + LOCI (flash = ./flash/, avec microdis.rom) + modem PicoWiFi émulé → prophet.3617.fr
 make test       # tests hôte (cli, CRC-32, http sur faux modem) + scénarios Phosphoric headless → prophetd local (ONLY=nom ; LONG=1 : disquette 1 Mo, 18 min)
 ```
-Touches : j/k (flèches) choisir, entrée ouvrir, b retour, n/p page, s chercher, g télécharger (fiche), l lancer (cassette montée + CLOAD"" / disquette + MIA_BOOT), c configuration, ? aide, q quitter.
+Touches : flèches (h/j/k/l) choisir, `,` `.` onglet, entrée ouvrir, b retour, n/p page, v grille/liste, s chercher, g télécharger (fiche), l lancer (cassette montée + CLOAD"" / disquette + MIA_BOOT), c configuration, ? aide, q quitter.
 
 | | |
 |---|---|
