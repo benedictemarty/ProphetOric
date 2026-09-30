@@ -59,10 +59,11 @@ int loci_mkdir(const char *path)
     return CALL(OP_MKDIR);
 }
 
+void __fastcall__ loci_push_rev(const unsigned char *buf, unsigned char n);   /* loci_asm.s */
+
 int loci_write(unsigned char fd, const unsigned char *buf, unsigned char n)
 {
-    const unsigned char *p = buf + n;
-    while (p > buf) REG(XSTACK) = *--p;           /* à l'envers : le firmware dépile dans l'ordre */
+    loci_push_rev(buf, n);                        /* loci_asm.s : à l'envers, le firmware dépile dans l'ordre */
     REG(AREG) = fd; REG(XREG) = 0;
     return CALL(OP_WRITE_XSTACK);
 }

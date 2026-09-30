@@ -145,7 +145,7 @@ alors les volumes).
 
 | Message (bas de l'écran) | Cause probable | Que faire |
 |---|---|---|
-| `pas d'ACIA 6551 en $0380 (LOCI ?)` | pas de LOCI, ou modem non servi | brancher le LOCI + PicoWiFi, redémarrer |
+| écran « materiel absent » (Aucune interface serie…) | pas de LOCI ni de modem, ou lancé depuis la page « Jouer » du site (qui n'émule ni l'un ni l'autre) | brancher le LOCI + PicoWiFi, redémarrer ; sur PC : Phosphoric `--loci --serial picowifi` |
 | `pas de modem (ATZ)` | le modem ne répond pas | vérifier le PicoWiFi (LED), `AT` dans OricTel |
 | `connexion refusee (ATD)` | Wi‑Fi non associé, serveur/port faux | vérifier le Wi‑Fi du modem, la configuration |
 | `pas de reponse` | serveur muet | réessayer ; vérifier hôte/port |

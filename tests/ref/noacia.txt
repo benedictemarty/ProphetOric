@@ -1,0 +1,28 @@
+ProphetOric 0.6.2       materiel absent
+
+
+Aucune interface serie (ACIA 6551 en
+$0380) : ProphetOric ne peut pas joindre
+le serveur.
+
+Materiel requis : cartouche LOCI et
+modem PicoWiFiModemUSB.
+
+Le lecteur du site (page Jouer) n'emule
+ni l'un ni l'autre : ProphetOric n'y
+fonctionne pas.
+
+Sur PC : Phosphoric --loci --serial
+picowifi
+
+
+
+
+
+
+
+
+
+
+
+une touche = retour au BASIC

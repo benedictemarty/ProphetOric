@@ -1,4 +1,4 @@
-ProphetOric 0.6.0            categories
+ProphetOric 0.6.2            categories
 
 > oric-games (2)
 

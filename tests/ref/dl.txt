@@ -1,4 +1,4 @@
-ProphetOric 0.6.0                 fiche
+ProphetOric 0.6.2                 fiche
 
 Zorg
 par :

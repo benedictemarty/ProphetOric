@@ -16,7 +16,7 @@
 #include "config.h"
 #include "loci.h"
 
-#define VERSION "0.6.0"
+#define VERSION "0.6.2"
 #define IPP 16                       /* programmes par page (16 lignes de liste) */
 #define ROWS 28
 #define COLS 40
@@ -399,7 +399,15 @@ int main(void)
 {
     unsigned char sel = 0, c;
     title("");
-    if (!serial_probe(ACIA_BASE_LOCI)) { status("pas d'ACIA 6551 en $0380 (LOCI ?)"); cgetc(); return 1; }
+    if (!serial_probe(ACIA_BASE_LOCI)) {             /* ex. page « Jouer » du site : ni LOCI ni modem */
+        title("materiel absent");
+        { unsigned char y = wrap(3, "Aucune interface serie (ACIA 6551 en $0380) : ProphetOric ne peut pas joindre le serveur.");
+          y = wrap(y + 1, "Materiel requis : cartouche LOCI et modem PicoWiFiModemUSB.");
+          y = wrap(y + 1, "Le lecteur du site (page Jouer) n'emule ni l'un ni l'autre : ProphetOric n'y fonctionne pas.");
+          wrap(y + 1, "Sur PC : Phosphoric --loci --serial picowifi"); }
+        status("une touche = retour au BASIC");
+        cgetc(); clrscr(); return 1;
+    }
     serial_init(ACIA_BASE_LOCI);
     config_load();                                   /* PROPHET.CFG sur le LOCI, sinon valeurs compilées */
     if (!fetch("/cat?platform=oric") || !cli_parse_cat(body, cats, 8, &ncats)) { cgetc(); return 1; }
