@@ -44,6 +44,36 @@ void          test_bus_write(unsigned addr, unsigned char value);
 
 static unsigned s_base;     /* base retenue par serial_init (pour DSR) */
 
+/* Anneau de réception logiciel (S2, Sedoric sans LOCI) : le 6551 n'a qu'UN octet de
+ * réception. Avec le LOCI, l'anneau de 32 octets du firmware absorbe l'écho du modem
+ * pendant que l'Oric émet une commande AT ; sans LOCI, le 2e octet d'écho écrasait le 1er
+ * (OVERRUN, docs/SPIKE-SEDORIC.md). serial_rx_grab() range l'octet reçu pendant les
+ * attentes d'émission (serial_tx.c) ; serial_poll/serial_recv vident l'anneau d'abord. */
+#define RX_RING 64                  /* puissance de 2 ; serial_irq.s range aussi dedans (RXMASK) */
+unsigned char serial_rx_ring[RX_RING];
+unsigned char serial_rx_head, serial_rx_tail;
+#define rx_ring serial_rx_ring
+#define rx_head serial_rx_head
+#define rx_tail serial_rx_tail
+
+void serial_rx_grab(void)
+{
+#ifdef SERIAL_NO_FIFO                 /* avec le LOCI (anneau de 32 octets) : rien — faire passer des
+                                         octets par cet anneau ralentissait chaque lecture du
+                                         téléchargement (anneau LOCI saturé, baud_ring32 cassé) */
+    unsigned char next;
+    if (!acia6551_poll()) return;
+    __asm__("php");                   /* serial_irq.s peut aussi ranger dans l'anneau */
+    __asm__("sei");
+    next = (rx_tail + 1) & (RX_RING - 1);
+    if (next != rx_head && acia6551_poll()) {   /* plein : l'octet reste dans l'ACIA */
+        rx_ring[rx_tail] = acia6551_recv();
+        rx_tail = next;
+    }
+    __asm__("plp");
+#endif
+}
+
 unsigned char __fastcall__ serial_probe(unsigned acia_base)
 {
     unsigned      st = acia_base + 1;   /* 6551 STATUS / miroir VIA ORA */
@@ -78,14 +108,36 @@ unsigned char __fastcall__ serial_modem_absent(void)
     return REG_RD(s_base + 1) & ACIA_NOT_DSR;
 }
 
+/* Attend au plus ~ms millisecondes qu'un octet arrive ; rend 1 dès qu'il y en a un. Pas de
+ * 0,1 ms (lecture ~45 cycles + boucle) : sans LOCI, l'ACIA n'a qu'un octet de réception et un
+ * octet arrive toutes les 1,04 ms à 9600 bauds — un sommeil de 1 à 2 ms entre deux lectures
+ * (at_wait_response, rx_byte) en perdait (OVERRUN, spike Sedoric S2). */
+unsigned char serial_wait(unsigned int ms)
+{
+    unsigned int i; unsigned char k;
+    for (i = 0; i < ms; ++i)
+        for (k = 0; k < 10; ++k) {
+            if (serial_poll()) return 1;
+            __asm__("ldx #$08");
+            __asm__("_swt_lp: dex");
+            __asm__("bne _swt_lp");
+        }
+    return serial_poll();
+}
+
 unsigned char __fastcall__ serial_poll(void)
 {
+    if (rx_head != rx_tail) return 1;
     return acia6551_poll();
 }
 
 unsigned char __fastcall__ serial_recv(void)
 {
-    return acia6551_recv();
+    unsigned char b;
+    if (rx_head == rx_tail) return acia6551_recv();
+    b = rx_ring[rx_head];             /* sans LOCI, l'IRQ de réception (serial_irq.s) remplit l'anneau */
+    rx_head = (rx_head + 1) & (RX_RING - 1);
+    return b;
 }
 
 unsigned char __fastcall__ serial_tx_ready(void)

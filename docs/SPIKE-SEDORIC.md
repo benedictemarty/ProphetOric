@@ -38,10 +38,42 @@ dans `spikes/sedoric/out/` : une autre session peut reconstruire `~/Oric1/oric1-
 - `sedoric-info` place SPIKE.BIN en piste 74 d'une image de 42 pistes physiques ; la
   relecture marche (cf. note VTOC « D/80/17 » de `~/Oric1/docs/SEDORIC.md`) : non élucidé.
 
+## S2, première partie (2026-10-01, branche `s2-sedoric`)
+
+Pilote série pour l'ACIA **sans tampon** (ProphetOric compilé `-DPROPHET_ACIA=0x031C
+-DSERIAL_NO_FIFO`), mesuré à la trace série de Phosphoric (`--serial-baud 9600`, sans
+`--serial-buffer`, donc fidèle au 6551) :
+
+| Correctif | Effet |
+|---|---|
+| anneau de réception logiciel de 64 octets (`serial.c`), rempli pendant l'émission (`serial_tx_flush`, file pleine) et en fin de `flush` | écho de `ATZ` / `ATD…` capté |
+| `serial_wait(ms)` : attente qui surveille la réception par pas de 0,1 ms, au lieu de sommeils de 1 à 2 ms (`at_wait_response`, `rx_byte`) | `OK`, `CONNECT` reçus (un octet arrive toutes les 1,04 ms à 9600 bauds) |
+| `serial_recv` relève l'ACIA pendant qu'il vide l'anneau | plus de perte après l'écho de `ATD` |
+| interruptions coupées pendant l'échange HTTP (`SERIAL_NO_FIFO` seulement) | l'IRQ 100 Hz de la ROM / SEDORIC ne vole plus de temps-octet |
+| `parse_dec` par paquets de 4 chiffres en 16 bits (+ relevés) | la multiplication 32 bits par chiffre dépassait le temps-octet |
+
+Résultat intermédiaire : catalogue reçu, mais **un octet écrasé à deux points fixes** de
+chaque réponse (après la ligne d'état, jonction en-têtes / corps) : la fiche échouait
+(`Title:` amputé). Cause : un traitement C de fin de ligne plus long que le temps-octet,
+IRQ coupées — non réductible proprement par des relevés.
+
+**Réception sous interruption** (`src/serial_irq.s`, build `-DSERIAL_NO_FIFO` seulement) :
+pendant chaque échange HTTP, l'IRQ de réception de l'ACIA est autorisée (commande `$01`)
+et une routine installée sur le vecteur RAM `$0244/$0245` (SEDORIC y met `JMP $0488`)
+range chaque octet dans l'anneau ; le Timer 1 du VIA (100 Hz) est seulement acquitté (son
+traitement ROM, clavier/curseur, est sauté pendant l'échange) ; toute autre IRQ est chaînée
+vers le gestionnaire d'origine. En fin d'échange : commande `$03`, vecteur rétabli.
+
+**Résultat : 0 OVERRUN** sur 7 requêtes (`/cat`, `/list/en-developpement`, `/list/all`,
+`/app/zorg`, `/files/zorg`, `/crc32/zorg`, `/requires/zorg`) : **catalogue et fiche complets
+sous SEDORIC sans LOCI**, en émulation (Phosphoric, 9600 bauds réels, 6551 sans tampon).
+La version LOCI n'utilise ni `serial_irq.s` ni les relevés de l'ACIA (`serial_rx_grab`, réservé à
+`-DSERIAL_NO_FIFO`) : une première version les faisait passer par l'anneau logiciel et saturait
+l'anneau de 32 octets du LOCI au téléchargement (pic 32/32) ; corrigé, pic 18/32 (19-21 avant S2).
+
 ## Suite proposée (décision PO)
 
-- **S2** : pilote série « lire en émettant » pour l'ACIA sans tampon, catalogue reçu
-  sans LOCI ; puis téléchargement d'un petit `.tap` en tranches de ~4 Ko dans un tampon
+- **S2, suite** : téléchargement d'un petit `.tap` en tranches de ~4 Ko dans un tampon
   RAM, écrit par `SAVE` (pas de réception pendant l'écriture disque).
 - **S3** : gros fichiers (écriture en flux XWDESC/XSVSEC), disque plein, coupures.
 - **S4** : `.dsk` (exclure, ou copie secteur par secteur sur le lecteur B).

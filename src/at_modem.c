@@ -1,4 +1,4 @@
-/* ProphetOric : fichier repris tel quel d'OricTel (~/orictel, bmarty, EUPL-1.2), voir docs/CADRAGE.md */
+/* ProphetOric : fichier repris d'OricTel (~/orictel, bmarty, EUPL-1.2), voir docs/CADRAGE.md ; modifié : serial_wait dans at_wait_response (S2) */
 /**
  * @file at_modem.c
  * @brief Implementation des primitives modem AT (voir at_modem.h)
@@ -147,8 +147,10 @@ unsigned char at_wait_response(const char* keyword, unsigned int timeout_ms)
              * correspondait plus et la connexion echouait). Le handshake ne
              * tenait que grace a l'anneau de 32 octets du firmware LOCI.
              * AT_POLL_MS = 2 laisse une marge de 4x sur le temps-octet. */
-            at_delay_ms(AT_POLL_MS);
-            elapsed += AT_POLL_MS;
+            /* ProphetOric (S2, sans LOCI) : attente qui SURVEILLE la réception
+             * (serial_wait, pas de 0,1 ms) au lieu d'un sommeil de 2 ms : à 9600
+             * bauds un octet arrive toutes les 1,04 ms et le 6551 n'en garde qu'un. */
+            if (!serial_wait(AT_POLL_MS)) elapsed += AT_POLL_MS;
         }
     }
     return 0;

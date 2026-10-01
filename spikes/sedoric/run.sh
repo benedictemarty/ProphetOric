@@ -30,13 +30,13 @@ PY
 
 # --- S1b : ProphetOric entier sous SEDORIC, sans LOCI : ACIA en $031C (à côté du Microdisc),
 # modem picowifi émulé (9600 bauds réels, sans tampon : fidèle au 6551) → prophetd local (port
-# 18995, tests/repo) ; attendu : écran « LOCI absent », puis, après une touche, le catalogue —
-# en 0.9.1 : « pas de modem (ATZ) », bloquant connu (voir docs/SPIKE-SEDORIC.md). Lancement : LOAD par l'INIST puis CALL#50D tapé au
+# 18995, tests/repo) ; attendu : le catalogue. S2 : reçu, quelques octets encore écrasés
+# (docs/SPIKE-SEDORIC.md). Lancement : LOAD par l'INIST puis CALL#50D tapé au
 # prompt — ni le lancement AUTO du LOAD ni « :CALL#50D » dans l'INIST ne démarrent ce fichier de
 # 31 Ko (alors que l'AUTO marche pour SPIKE.COM) : cause NON CHERCHÉE (point ouvert).
 P=../..
-SRC="$P/src/main.c $P/src/http.c $P/src/cli.c $P/src/serial.c $P/src/serial_tx.c $P/src/at_modem.c $P/src/loci.c $P/src/download.c $P/src/config.c $P/src/crc32.c $P/src/lang.c $P/src/serial_asm.s $P/src/loci_asm.s $P/src/crc32_asm.s $P/src/tapehdr.s"
-cl65 -t atmos -O -I$P/src -C $P/cfg/prophetoric.cfg -DPROPHET_HOST='"127.0.0.1"' -DPROPHET_PORT='"18995"' -DPROPHET_ACIA=0x031C \
+SRC="$P/src/main.c $P/src/http.c $P/src/cli.c $P/src/serial.c $P/src/serial_tx.c $P/src/at_modem.c $P/src/loci.c $P/src/download.c $P/src/config.c $P/src/crc32.c $P/src/lang.c $P/src/serial_asm.s $P/src/loci_asm.s $P/src/crc32_asm.s $P/src/serial_irq.s $P/src/tapehdr.s"
+cl65 -t atmos -O -I$P/src -C $P/cfg/prophetoric.cfg -DPROPHET_HOST='"127.0.0.1"' -DPROPHET_PORT='"18995"' -DPROPHET_ACIA=0x031C -DSERIAL_NO_FIFO \
      -o "$O/prophet031c.tap" $SRC -m "$O/prophet031c.map" >"$O/build031c.log" 2>&1 || { echo "FAIL build 031C"; cat "$O/build031c.log"; exit 1; }
 printf 'datafolder: %s/tests/repo\nport: 18995\nbind: 127.0.0.1\nmax_ipp: 50\n' "$(cd $P && pwd)" > "$O/prophet.yml"
 for p in $(pgrep -f "prophetd -config $O/prophet.yml"); do kill $p; done
@@ -44,15 +44,13 @@ $HOME/Neo6502Prophet/bin/prophetd -config "$O/prophet.yml" >"$O/prophetd.log" 2>
 trap 'kill $PD 2>/dev/null' EXIT
 for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:18995/cat && break; sleep 0.1; done
 $E/tap2sedoric "$O/prophet031c.tap" -o "$O/disk2.dsk" -b "$O/base.dsk" -n PROPHET.COM -e 050D -i 'LOAD"PROPHET.COM"' >"$O/inject2.log" 2>&1 || { echo "FAIL inject 2"; cat "$O/inject2.log"; exit 1; }
-$EMU $ROM -d "$O/disk2.dsk" --serial picowifi:Spike --serial-baud 9600 --serial-trace "$O/s1b_trace.txt" --headless --realtime --cycles 85100000 \
-     --type-keys "40000000:CALL#50D\n" --type-keys "60000000: " --screenshot-text-at "56000000:$O/s1b_noloci.txt" --screenshot-text-at "85000000:$O/s1b_cat.txt" >"$O/s1b.log" 2>&1
-echo "--- 56 M cycles"; grep -v "^ *$" "$O/s1b_noloci.txt" | head -3
-echo "--- 85 M cycles"; grep -v "^ *$" "$O/s1b_cat.txt" | head -6; tail -1 "$O/s1b_cat.txt"
-if grep -q "LOCI absent" "$O/s1b_noloci.txt"; then echo "PASS sedoric_prophet_start (ProphetOric demarre sous SEDORIC, ACIA \$031C detecte sans LOCI)"
-else echo "FAIL sedoric_prophet_start"; exit 1; fi
-# Bloquant connu (resultat du spike, pas un echec du test) : sans l'anneau de 32 octets du LOCI,
-# l'echo de "ATZ" par le modem ecrase l'unique octet de reception du 6551 pendant l'emission.
-if tail -1 "$O/s1b_cat.txt" | grep -q "pas de modem (ATZ)" && grep -q "OVERRUN" "$O/s1b_trace.txt"; then
-    echo "CONNU sedoric_modem (echo AT : OVERRUN du 6551 sans tampon -> S2 : lire en emettant)"
-elif grep -q "Zorg" "$O/s1b_cat.txt"; then echo "PASS sedoric_catalogue (catalogue recu sans LOCI)"
-else echo "FAIL sedoric_modem (ni catalogue ni bloquant connu)"; tail -1 "$O/s1b_cat.txt"; exit 1; fi
+$EMU $ROM -d "$O/disk2.dsk" --serial picowifi:Spike --serial-baud 9600 --serial-trace "$O/s1b_trace.txt" --headless --realtime --cycles 70100000 \
+     --type-keys "40000000:CALL#50D\n" --screenshot-text-at "70000000:$O/s1b_cat.txt" >"$O/s1b.log" 2>&1
+echo "--- 70 M cycles"; grep -v "^ *$" "$O/s1b_cat.txt" | head -5; tail -1 "$O/s1b_cat.txt"
+OV=$(grep -c OVERRUN "$O/s1b_trace.txt")
+# S2 (2026-10-01) : ACIA $031C sans tampon, 9600 bauds réels ; anneau logiciel + lecture pendant
+# l'émission (serial_rx_grab, serial_wait), réception sous IRQ pendant l'échange (serial_irq.s,
+# -DSERIAL_NO_FIFO). L'entrée du CALL passe l'écran « LOCI absent » et ouvre la fiche de Zorg.
+if grep -q "Zorg" "$O/s1b_cat.txt" && [ "$OV" -eq 0 ]; then
+    echo "PASS sedoric_catalogue (catalogue + fiche recus sous SEDORIC sans LOCI, ACIA \$031C, reception sous IRQ : 0 OVERRUN)"
+else echo "FAIL sedoric_catalogue (OVERRUN : $OV)"; tail -1 "$O/s1b_cat.txt"; exit 1; fi

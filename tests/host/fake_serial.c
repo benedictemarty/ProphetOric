@@ -18,6 +18,8 @@ const char *fake_tx(void) { tx_cap[tx_len] = 0; return tx_cap; }
 static void rx_push(const char *s) { while (*s && rx_len < (int)sizeof rx_q) rx_q[rx_len++] = (unsigned char)*s++; }
 
 unsigned char serial_poll(void) { return rx_head < rx_len; }
+void serial_rx_grab(void) { }
+unsigned char serial_wait(unsigned int ms) { (void)ms; return serial_poll(); }
 unsigned char serial_recv(void) { return rx_head < rx_len ? rx_q[rx_head++] : 0xFF; }
 void serial_tx_flush(void) {}
 void serial_send(unsigned char b)

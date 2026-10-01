@@ -16,6 +16,11 @@ int main(void)
     CHECK(http_parse_headers("HTTP/1.0 404 Not Found\r\n\r\n") && http_status == 404 && http_length == 0xFFFFFFFFUL);
     CHECK(!http_parse_headers("42,1,0:") && http_status == 0);
     CHECK(http_parse_headers("HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-7/100\r\nContent-Length: 8\r\n\r\n") && http_status == 206 && http_length == 8 && http_range_total == 100);
+    /* grands nombres (parse_dec par paquets de 4 chiffres en 16 bits) : disquette de 1 Mo, 9 chiffres */
+    CHECK(http_parse_headers("HTTP/1.1 206 Partial Content\r\nContent-Range: bytes 0-32767/1048576\r\nContent-Length: 32768\r\n\r\n") && http_length == 32768UL && http_range_total == 1048576UL);
+    CHECK(http_parse_headers("HTTP/1.1 200 OK\r\nContent-Length: 123456789\r\n\r\n") && http_length == 123456789UL);
+    CHECK(http_parse_headers("HTTP/1.1 200 OK\r\nContent-Length: 10000\r\n\r\n") && http_length == 10000UL);
+    CHECK(http_parse_headers("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n") && http_length == 0UL);
 
     strcpy(http_host, "127.0.0.1"); strcpy(http_port, "18994"); http_pass[0] = 0;
     fake_reset("HTTP/1.1 200 OK\r\nContent-Length: 22\r\nConnection: close\r\n\r\ngames (3)\n\rtools (1)\n\r");

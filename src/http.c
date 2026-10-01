@@ -48,17 +48,27 @@ static unsigned char rx_byte(unsigned char *b, unsigned int timeout_ms)
     unsigned int elapsed = 0;
     while (!serial_poll()) {
         if (elapsed >= timeout_ms) return 0;
-        delay_ms(1);
-        ++elapsed;
+        if (!serial_wait(1)) ++elapsed;        /* surveille la réception (6551 sans LOCI : 1 octet) */
     }
     *b = serial_recv();
     return 1;
 }
 
+/* Décimal → 32 bits sans multiplication 32 bits par chiffre : les chiffres sont accumulés
+ * par paquets de 4 en 16 bits, une seule multiplication longue par paquet suivant (aucune
+ * pour « 200 » ou un petit Content-Length). Sans LOCI (S2), la multiplication longue du
+ * runtime cc65 par chiffre dépassait le temps-octet : la suite de l'en-tête et le début
+ * du corps étaient écrasés dans l'ACIA. */
 static unsigned long parse_dec(const char *p)
 {
-    unsigned long v = 0;
-    while (*p >= '0' && *p <= '9') { v = v * 10 + (*p - '0'); ++p; }
+    static const unsigned int pow10[5] = { 1, 10, 100, 1000, 10000 };
+    unsigned long v = 0; unsigned int a; unsigned char n;
+    while (*p >= '0' && *p <= '9') {
+        a = 0; n = 0;
+        while (n < 4 && *p >= '0' && *p <= '9') { a = a * 10 + (unsigned char)(*p - '0'); ++p; ++n; }
+        v = v ? v * pow10[n] + a : a;
+        serial_rx_grab();
+    }
     return v;
 }
 
@@ -70,6 +80,7 @@ static void hdr_reset(void)
 
 static void hdr_line_done(void)
 {
+    serial_rx_grab();                     /* sans LOCI : relever l'ACIA autour du traitement de ligne */
     hline[hl] = 0;
     if (hfirst) {
         hfirst = 0;
@@ -88,6 +99,7 @@ static void hdr_line_done(void)
         if (*v == '/') http_range_total = parse_dec(v + 1);
     }
     hl = 0;
+    serial_rx_grab();
 }
 
 /* un octet d'en-tête ; retour 1 quand la ligne vide (fin des en-têtes) est passée */
@@ -152,6 +164,20 @@ static void finish(void)
 }
 
 /* connexion + requête + en-têtes ; retour 1 si les en-têtes sont valides (http_status posé) */
+/* Sans LOCI (-DSERIAL_NO_FIFO, spike Sedoric) : le 6551 n'a qu'un octet de réception et
+ * l'interruption système de 100 Hz (clavier/curseur de la ROM, SEDORIC) ou un traitement C
+ * long en perdent ; pendant l'échange, réception sous IRQ (serial_irq.s). Avec le LOCI, son
+ * anneau de 32 octets suffit : rien ne change. */
+#if defined(SERIAL_NO_FIFO) && !defined(TEST_HOST)
+/* réception sous IRQ pendant l'échange (serial_irq.s) : les traitements C longs ne font
+ * plus perdre d'octet ; l'IRQ 100 Hz de la ROM est seulement acquittée */
+#define IRQ_OFF() serial_irq_install(PROPHET_ACIA)
+#define IRQ_ON()  serial_irq_remove()
+#else
+#define IRQ_OFF()
+#define IRQ_ON()
+#endif
+
 static unsigned char request(const char *path, const char *range)
 {
     unsigned char b;
@@ -172,6 +198,7 @@ static unsigned char request(const char *path, const char *range)
         if (hdr_feed(b)) break;
     }
     if (!hvalid) { http_error = T(S_E_BADHTTP); at_hangup(); return 0; }
+    serial_rx_grab();                     /* début du corps : relevé avant la mise en place de la boucle */
     return 1;
 }
 
@@ -182,7 +209,8 @@ unsigned char http_get(const char *path, const char *range, char *buf, unsigned 
     unsigned long remaining;
 
     *len = 0;
-    if (!request(path, range)) return 0;
+    IRQ_OFF();
+    if (!request(path, range)) { IRQ_ON(); return 0; }
     remaining = http_length;
     /* même discipline que http_get_stream : blocs de ≤ 128 octets en 8 bits (l'anneau de
      * 32 octets du LOCI débordait à 9600 bauds avec une comparaison 32 bits par octet) */
@@ -199,6 +227,7 @@ unsigned char http_get(const char *path, const char *range, char *buf, unsigned 
     buf[n] = 0;
     *len = n;
     finish();
+    IRQ_ON();
     return 1;
 }
 
@@ -233,7 +262,8 @@ unsigned char http_get_stream(const char *path, const char *range, http_sink sin
 
     *len = 0;
     memset(prev, 0, sizeof prev);
-    if (!request(path, range)) return 0;
+    IRQ_OFF();
+    if (!request(path, range)) { IRQ_ON(); return 0; }
     remaining = http_length;                      /* 0xFFFFFFFF : longueur inconnue, fin par silence */
     while (remaining) {
         chunk = remaining > 128 ? 128 : (unsigned char)remaining;
@@ -252,12 +282,13 @@ unsigned char http_get_stream(const char *path, const char *range, http_sink sin
             }
             remaining = chunk;
         }
-        if (chunk && !sink(block, chunk)) { http_error = T(S_E_WRITE); at_hangup(); return 0; }
+        if (chunk && !sink(block, chunk)) { http_error = T(S_E_WRITE); at_hangup(); IRQ_ON(); return 0; }
         if (chunk == 128) memcpy(prev, block + 112, 16);
         *len += chunk;
         remaining -= chunk;
         if (http_tick) http_tick(*len);
     }
     finish();
+    IRQ_ON();
     return 1;
 }

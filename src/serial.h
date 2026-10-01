@@ -115,6 +115,23 @@ void serial_tx_pump(void);
 void serial_tx_flush(void);
 
 /**
+ * Range dans l'anneau logiciel l'octet éventuellement reçu (non bloquant). Appelé
+ * pendant les attentes d'émission : sans LOCI, l'ACIA n'a qu'un octet de réception.
+ */
+void serial_rx_grab(void);
+
+/**
+ * Attend au plus ~ms millisecondes un octet reçu, en surveillant la réception par pas
+ * de 0,1 ms. @return 1 dès qu'un octet est disponible, 0 sinon.
+ */
+unsigned char serial_wait(unsigned int ms);
+
+/* Réception sous IRQ pendant un échange (serial_irq.s, build -DSERIAL_NO_FIFO) : l'IRQ de
+ * réception de l'ACIA range chaque octet dans l'anneau ; remove rétablit la scrutation. */
+void __fastcall__ serial_irq_install(unsigned acia_base);
+void __fastcall__ serial_irq_remove(void);
+
+/**
  * Ecriture directe ACIA, bloque sur TDRE (assembleur).
  * Ne pas utiliser depuis le code applicatif: passer par serial_send().
  */

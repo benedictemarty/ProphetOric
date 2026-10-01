@@ -1,4 +1,4 @@
-/* ProphetOric : fichier repris tel quel d'OricTel (~/orictel, bmarty, EUPL-1.2), voir docs/CADRAGE.md */
+/* ProphetOric : fichier repris d'OricTel (~/orictel, bmarty, EUPL-1.2), voir docs/CADRAGE.md ; ajout : serial_rx_grab (S2) */
 /**
  * @file serial_tx.c
  * @brief File d'emission serie non bloquante
@@ -51,6 +51,7 @@ void serial_send(unsigned char byte)
          * machine indefiniment. ~60000 tours = au pire quelques dizaines
          * de ms a 1 MHz, bien au-dela d'un cycle TDRE normal. */
         serial_tx_pump();
+        serial_rx_grab();       /* ProphetOric : écho du modem pendant l'émission (6551 sans tampon) */
         if (++spins == 0) {     /* wrap de l'unsigned int (65536 tours) */
             return;             /* octet abandonne (cas degrade borne) */
         }
@@ -64,8 +65,12 @@ void serial_tx_flush(void)
     unsigned int spins = 0;
     while (tx_head != tx_tail) {
         serial_tx_pump();
+        serial_rx_grab();       /* ProphetOric : idem (sans LOCI, l'écho AT faisait OVERRUN) */
         if (++spins == 0) {     /* meme borne anti-deadlock que serial_send */
             return;             /* file abandonnee (TDRE jamais pret) */
         }
     }
+    serial_rx_grab();           /* ProphetOric : l'écho de l'avant-dernier octet est peut-être là ;
+                                 * sans ce dernier relevé, l'écho du CR l'écrasait avant que
+                                 * at_wait_response ne lise (CONNECT perdu, spike Sedoric S2) */
 }
