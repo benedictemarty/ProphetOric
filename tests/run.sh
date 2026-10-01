@@ -11,6 +11,9 @@ OUT=tests/out; REF=tests/ref; mkdir -p "$OUT" "$REF"; fail=0
 [ -x "$PROPHETD" ] || (cd "$HOME/Neo6502Prophet" && make -s build)
 printf 'datafolder: %s/tests/repo\nport: 18994\nbind: 127.0.0.1\nmax_ipp: 50\n' "$PWD" > "$OUT/prophet.yml"
 for p in $(pgrep -f "prophetd -config $OUT/prophet.yml"); do kill "$p"; done; sleep 0.3   # reliquat d'une passe interrompue
+# port déjà pris par autre chose (ex. un prophetd de débogage oublié, 2026-10-01 : tests passés contre
+# le mauvais serveur, mot de passe différent) → arrêt explicite plutôt que des échecs trompeurs
+if ss -ltn 2>/dev/null | grep -qE ":(18994|18993) "; then echo "ECHEC : port 18994/18993 deja utilise (ss -ltnp)"; exit 1; fi
 PROPHET_PASSWORD=sesame-test "$PROPHETD" -config "$OUT/prophet.yml" >"$OUT/prophetd.log" 2>&1 & PD=$!
 trap 'kill $PD 2>/dev/null' EXIT
 for i in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:18994/cat && break; sleep 0.1; done

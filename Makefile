@@ -25,7 +25,7 @@ TDEFS   = -DPROPHET_HOST='"$(TEST_HOST_ADDR)"' -DPROPHET_PORT='"$(TEST_PORT)"'
 EMU     ?= $(HOME)/Oric1/oric1-emu
 EMU_ROM ?= $(HOME)/Oric1/roms/basic11b.rom
 
-.PHONY: all test test-host test-emu run clean
+.PHONY: all test test-host test-emu run clean spike-sedoric
 LNG = $(BLD)/EN.LNG $(BLD)/ES.LNG   # langues (src/strings.def), à copier sur le LOCI à côté de PROPHET.CFG
 all: $(OUT) $(LNG)
 
@@ -41,8 +41,9 @@ $(BLD)/%.o: $(BLD)/%.s
 $(BLD)/%.o: src/%.s | $(BLD)
 	$(CA65) -t $(TARGET) -o $@ $<
 
-# en-têtes et textes : tout recompiler s'ils changent
-$(OBJ) $(TOBJ): $(wildcard src/*.h) src/strings.def
+# en-têtes et textes : tout recompiler s'ils changent — aussi les .s (build/t_*.s pouvaient rester
+# d'une construction précédente et être réutilisés périmés : User-Agent 0.9.0 dans le .tap de test 0.9.1)
+$(OBJ) $(TOBJ) $(patsubst src/%.c,$(BLD)/%.s,$(CSRC)) $(patsubst src/%.c,$(BLD)/t_%.s,$(CSRC)): $(wildcard src/*.h) src/strings.def
 
 $(BLD)/mklng: tools/mklng.c src/strings.def src/version.h | $(BLD)
 	gcc -Wall -Wextra -o $@ tools/mklng.c
@@ -73,6 +74,9 @@ test-host: $(LNG) | $(BLD)  ## parseurs cli, HTTP, CRC-32 et textes (3 langues) 
 
 test-emu: $(TESTOUT) $(LNG)  ## Phosphoric headless → prophetd local (tests/run.sh)
 	tests/run.sh $(TESTOUT)
+
+spike-sedoric:  ## spike S1 : SAVE Sedoric depuis cc65 + ProphetOric sous Sedoric sans LOCI (spikes/sedoric)
+	spikes/sedoric/run.sh
 
 clean:
 	rm -rf $(BLD)

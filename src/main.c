@@ -24,6 +24,9 @@
 #define SCR ((unsigned char *)0xBB80)  /* écran TEXT : attributs série écrits directement */
 #define MAX_CATS 16
 #define MAX_DEV 16
+#ifndef PROPHET_ACIA
+#define PROPHET_ACIA ACIA_BASE_LOCI       /* -DPROPHET_ACIA=0x031C : ACIA hors LOCI (spikes/sedoric) */
+#endif
 
 #define body BODY_BUF                 /* réponse courante (parsée en place), en $AA00 (himem.h) */
 static struct cli_cat cats[MAX_CATS];
@@ -577,7 +580,7 @@ int main(void)
 {
     unsigned char sel = 0, c;
     title("");
-    if (!serial_probe(ACIA_BASE_LOCI)) {             /* ni LOCI ni modem (Oric nu, émulateur sans --loci) */
+    if (!serial_probe(PROPHET_ACIA)) {             /* ni LOCI ni modem (Oric nu, émulateur sans --loci) */
         title("materiel absent");
         { unsigned char y = wrap(3, "Aucune interface serie (ACIA 6551 en $0380) : ProphetOric ne peut pas joindre le serveur.");
           y = wrap(y + 1, "Materiel requis : cartouche LOCI et modem PicoWiFiModemUSB.");
@@ -594,7 +597,7 @@ int main(void)
         status("une touche = continuer");
         cgetc();
     }
-    serial_init(ACIA_BASE_LOCI);
+    serial_init(PROPHET_ACIA);
     config_load();                                   /* PROPHET.CFG sur le LOCI, sinon valeurs compilées */
     if (cfg_lang[0] && !lang_set(cfg_lang)) { status(T(S_LNG_MISSING)); cgetc(); }   /* 5e ligne : fr / en / es */
     if (!load_cats()) { cgetc(); return 1; }

@@ -30,6 +30,8 @@ Touches : flèches (h/j/k/l) choisir, `,` `.` onglet, entrée ouvrir, b retour, 
 | Chaîne | cc65 (`-t atmos`, comme OricTel) ; tests hôte gcc + Phosphoric headless |
 | Réutilisé | OricTel (`~/orictel`) : driver ACIA `serial_asm.s`, file d'émission, `at_modem.c` |
 
+Spike « stockage Sedoric sans LOCI » : `docs/SPIKE-SEDORIC.md` (`make spike-sedoric`).
+
 Voir **`docs/MANUEL.md`** (manuel utilisateur, captures, vidéo `docs/img/demo.mp4`),
 `docs/CADRAGE.md` (architecture, risques, plan de tests), `ROADMAP.md`,
 `CONTRIBUTING.md`. Licence : EUPL‑1.2 (`LICENSE`). Auteur : bmarty.
