@@ -1,4 +1,4 @@
-ProphetOric 0.9.1       materiel absent
+ProphetOric 0.10.0      materiel absent
 
 
 Aucune interface serie (ACIA 6551 en

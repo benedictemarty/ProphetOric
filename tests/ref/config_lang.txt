@@ -1,4 +1,4 @@
-ProphetOric 0.9.1         configuration
+ProphetOric 0.10.0        configuration
 
 serveur (hote ou IP) :
 127.0.0.1

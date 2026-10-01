@@ -68,15 +68,17 @@ static void status(const char *s) { line(ROWS - 1, s); }
 /* affiche un texte avec retour à la ligne aux mots, depuis la ligne y et avant la ligne
  * wrap_end ; renvoie la ligne suivante */
 static unsigned char wrap_end = ROWS - 1;
+static unsigned char wrap_cols = COLS;    /* < COLS : colonne de gauche (jaquette à droite) */
+static void put_pad(unsigned char y, const char *t, unsigned char w);
 static unsigned char wrap(unsigned char y, const char *s)
 {
     char buf[COLS + 1];
     while (*s && y < wrap_end) {
         unsigned char n = 0, cut = 0;
-        while (s[n] && s[n] != '\n' && n < COLS) { if (s[n] == ' ') cut = n; ++n; }
-        if (n == COLS && s[n] && s[n] != ' ' && cut) n = cut;
+        while (s[n] && s[n] != '\n' && n < wrap_cols) { if (s[n] == ' ') cut = n; ++n; }
+        if (n == wrap_cols && s[n] && s[n] != ' ' && cut) n = cut;
         memcpy(buf, s, n); buf[n] = 0;
-        line(y++, buf);
+        if (wrap_cols < COLS) put_pad(y++, buf, wrap_cols); else line(y++, buf);
         s += n;
         while (*s == ' ' || *s == '\n') ++s;
     }
@@ -368,6 +370,42 @@ static void put(unsigned char x, unsigned char y, const char *t, unsigned char n
     while (n-- && *t) *p++ = (unsigned char)*t++ | inv;
 }
 
+/* texte à gauche sur w colonnes, complété d'espaces (ne touche pas la jaquette à droite) */
+static void put_pad(unsigned char y, const char *t, unsigned char w)
+{
+    unsigned char *p = SCR + y * COLS;
+    while (w && *t) { *p++ = (unsigned char)*t++; --w; }
+    while (w--) *p++ = ' ';
+}
+
+/* Jaquette « OLR1 » (/gfx/<id>?fmt=oric, prophetd ≥ 0.23.0) : mosaïque du jeu alternatif,
+ * code = 32 + motif de 2×3 blocs ; par ligne : papier, encre, codes. Affichée en haut à
+ * droite de la fiche : 3 cases d'attribut (papier, encre, jeu alternatif $09) + les codes. */
+#define COVER_COL 20
+#define COVER_LEN (6 + 9 * (2 + 17))          /* 177 octets */
+static unsigned char cover[COVER_LEN + 1];    /* + NUL ajouté par http_get */
+static unsigned char cover_ok;
+
+static void cover_load(const char *id)
+{
+    char path[64]; unsigned int len;
+    cover_ok = 0;
+    strcpy(path, "/gfx/"); strncat(path, id, 40); strcat(path, "?fmt=oric");
+    if (!http_get(path, 0, (char *)cover, sizeof cover, &len)) return;
+    if (http_status != 200 || len != COVER_LEN || memcmp(cover, "OLR1", 4)) return;   /* 404 : pas de jaquette */
+    cover_ok = cover[4] == 17 && cover[5] == 9;
+}
+
+static void cover_draw(void)
+{
+    unsigned char r, c; const unsigned char *d = cover + 6;
+    for (r = 0; r < 9; ++r, d += 2 + 17) {
+        unsigned char *p = SCR + (2 + r) * COLS + COVER_COL;
+        p[0] = 0x10 | (d[0] & 7); p[1] = d[1] & 7; p[2] = 0x09;
+        for (c = 0; c < 17; ++c) p[3 + c] = d[2 + c];
+    }
+}
+
 static const char *tab_label(unsigned char t)
 {
     if (!t) return T(S_TAB_ALL);
@@ -510,11 +548,20 @@ static void info_screen(const char *id)
     if (!dl_fetch_meta(id)) dl_nfiles = 0;                       /* fiche affichée quand même */
     dl_last_tap[0] = dl_last_dsk[0] = 0;
     installed = dl_nfiles && dl_installed(id);
+    cover_load(id);
     title(T(S_T_INFO));
     if (is_dev(id)) { SCR[COLS] = 0x11; SCR[COLS + 1] = 7; put(2, 1, T(S_BANNER), 18, 0); }   /* bandeau rouge */
-    wrap_end = 5; y = wrap(2, info.title);
-    if (info.author) { char s[COLS + 1]; strcpy(s, T(S_BY)); strncat(s, info.author, COLS - 6); line(y++, s); }
-    ++y;
+    if (cover_ok) {                          /* jaquette à droite : titre et auteur sur 19 colonnes */
+        cover_draw();
+        wrap_cols = COVER_COL - 1; wrap_end = 9; y = wrap(2, info.title);
+        if (info.author) { char s[COLS + 1]; strcpy(s, T(S_BY)); strncat(s, info.author, COLS - 6); wrap_end = 11; y = wrap(y, s); }
+        wrap_cols = COLS;
+        if (y < 12) y = 12;
+    } else {
+        wrap_end = 5; y = wrap(2, info.title);
+        if (info.author) { char s[COLS + 1]; strcpy(s, T(S_BY)); strncat(s, info.author, COLS - 6); line(y++, s); }
+        ++y;
+    }
     wrap_end = dl_nreq ? ROWS - 10 : ROWS - 8;
     if (info.description) y = wrap(y, info.description);
     wrap_end = ROWS - 1;

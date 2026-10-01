@@ -9,7 +9,7 @@ EMU=${EMU:-$HOME/Oric1/oric1-emu}; ROM=${EMU_ROM:-$HOME/Oric1/roms/basic11b.rom}
 PROPHETD=${PROPHETD:-$HOME/Neo6502Prophet/bin/prophetd}
 OUT=tests/out; REF=tests/ref; mkdir -p "$OUT" "$REF"; fail=0
 [ -x "$PROPHETD" ] || (cd "$HOME/Neo6502Prophet" && make -s build)
-printf 'datafolder: %s/tests/repo\nport: 18994\nbind: 127.0.0.1\nmax_ipp: 50\n' "$PWD" > "$OUT/prophet.yml"
+printf 'datafolder: %s/tests/repo\nshotsfolder: %s/tests/shots\nport: 18994\nbind: 127.0.0.1\nmax_ipp: 50\n' "$PWD" "$PWD" > "$OUT/prophet.yml"   # jaquette de test : tests/shots/zorg.png
 for p in $(pgrep -f "prophetd -config $OUT/prophet.yml"); do kill "$p"; done; sleep 0.3   # reliquat d'une passe interrompue
 # port déjà pris par autre chose (ex. un prophetd de débogage oublié, 2026-10-01 : tests passés contre
 # le mauvais serveur, mot de passe différent) → arrêt explicite plutôt que des échecs trompeurs
@@ -64,6 +64,15 @@ if want grid_ppm; then
     if [ "$mode" = ref ]; then cp "$OUT/grid.ppm" "$REF/grid.ppm"; echo "REF  grid_ppm"
     elif cmp -s "$OUT/grid.ppm" "$REF/grid.ppm"; then echo "PASS grid_ppm (grille de cartes : couleurs, double hauteur, EN DEV)"
     else echo "FAIL grid_ppm (tests/out/grid.ppm differe de tests/ref/grid.ppm)"; fail=1; fi
+fi
+# jaquette OLR1 (/gfx/zorg?fmt=oric, prophetd ≥ 0.23.0, tests/shots/zorg.png) en haut à droite de la fiche : image PPM
+if want cover_ppm; then
+    rm -rf "$OUT/flash_cover"; mkdir -p "$OUT/flash_cover"
+    "$EMU" -r "$ROM" -t "$TAP" -f --loci --loci-usb none --loci-flash "$OUT/flash_cover" --serial picowifi:Test --serial-buffer 4096 --headless --realtime \
+        --cycles 24100000 --type-keys "12000000:\n" --screenshot-at "24000000:$OUT/cover.ppm" >"$OUT/cover.log" 2>&1
+    if [ "$mode" = ref ]; then cp "$OUT/cover.ppm" "$REF/cover.ppm"; echo "REF  cover_ppm"
+    elif cmp -s "$OUT/cover.ppm" "$REF/cover.ppm"; then echo "PASS cover_ppm (jaquette mosaique sur la fiche de Zorg)"
+    else echo "FAIL cover_ppm (tests/out/cover.ppm differe de tests/ref/cover.ppm)"; fail=1; fi
 fi
 # composants minimums (/requires/hello : loci>=0.3.1, picowifi) : avertissement sur la fiche
 scenario fiche_req "12000000:shello\n\p5\n" 32000000

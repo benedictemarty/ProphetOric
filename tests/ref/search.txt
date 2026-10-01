@@ -1,4 +1,4 @@
-ProphetOric 0.9.1             recherche
+ProphetOric 0.10.0            recherche
  ? zorg
 
 

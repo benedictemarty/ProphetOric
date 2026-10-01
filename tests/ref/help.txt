@@ -1,4 +1,4 @@
-ProphetOric 0.9.1                  aide
+ProphetOric 0.10.0                 aide
 
 fleches ou h/j/k/l : choisir
 entree : ouvrir     b : retour
@@ -16,7 +16,7 @@ demarrage Microdisc.
 Reglages : PROPHET.CFG sur le LOCI.
 Marqueurs de telechargement : .prophet/
 dans le dossier.
-ProphetOric 0.9.1 - prophet.3617.fr
+ProphetOric 0.10.0 - prophet.3617.fr
 
 
 

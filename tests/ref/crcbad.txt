@@ -1,19 +1,19 @@
-ProphetOric 0.9.1                 fiche
+ProphetOric 0.10.0                fiche
 
-Zorg
-par : Tansoft
+Zorg                   _________________
+par : Tansoft          _________________
+                       \\\\\\\\\\\\\\\\\
+                                H\\\\\
+                                J_____
+                                J_____
+                                J_____
+                                */////
+                       _________________
 
 Un jeu Oric de test, avec une
 description assez longue pour verifier
 le retour a la ligne sur quarante
 colonnes.
-
-
-
-
-
-
-
 
 
 

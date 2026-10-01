@@ -25,7 +25,7 @@ TDEFS   = -DPROPHET_HOST='"$(TEST_HOST_ADDR)"' -DPROPHET_PORT='"$(TEST_PORT)"'
 EMU     ?= $(HOME)/Oric1/oric1-emu
 EMU_ROM ?= $(HOME)/Oric1/roms/basic11b.rom
 
-.PHONY: all test test-host test-emu run clean spike-sedoric
+.PHONY: all test test-host test-emu ref run clean spike-sedoric
 LNG = $(BLD)/EN.LNG $(BLD)/ES.LNG   # langues (src/strings.def), à copier sur le LOCI à côté de PROPHET.CFG
 all: $(OUT) $(LNG)
 
@@ -74,6 +74,11 @@ test-host: $(LNG) | $(BLD)  ## parseurs cli, HTTP, CRC-32 et textes (3 langues) 
 
 test-emu: $(TESTOUT) $(LNG)  ## Phosphoric headless → prophetd local (tests/run.sh)
 	tests/run.sh $(TESTOUT)
+
+# régénère les références (tests/ref) : le .tap de test ET les .LNG doivent être de la même version
+# (une ref faite avec des .LNG d'une autre version reste en français : 0.9.1 et 0.10.0)
+ref: $(TESTOUT) $(LNG)  ## ONLY=nom pour une seule référence
+	tests/run.sh $(TESTOUT) ref
 
 spike-sedoric:  ## spike S1 : SAVE Sedoric depuis cc65 + ProphetOric sous Sedoric sans LOCI (spikes/sedoric)
 	spikes/sedoric/run.sh

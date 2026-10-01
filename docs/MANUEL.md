@@ -84,7 +84,9 @@ entrée — le résultat se parcourt comme un onglet, `b` revient aux onglets.
 
 ![fiche](img/03-fiche.png)
 
-La fiche donne le titre, l'auteur, la description (repliée à 40 colonnes)
+Si le serveur a une jaquette du programme, la fiche l'affiche en haut à droite, en
+caractères mosaïques (17 × 9 cases, une paire de couleurs par ligne : c'est une
+silhouette, pas une capture). La fiche donne le titre, l'auteur, la description (repliée à 40 colonnes)
 et la liste des fichiers ; un bandeau rouge « EN DEVELOPPEMENT » signale une
 version de travail. Si l'auteur a déclaré des **composants
 minimums** (ex. `loci>=0.3.1`, `picowifi`), la fiche affiche « ! peut ne pas
